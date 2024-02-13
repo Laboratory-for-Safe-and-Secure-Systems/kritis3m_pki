@@ -52,17 +52,23 @@ target_include_directories(wolfssl PUBLIC $<BUILD_INTERFACE:${OQS_BINARY_DIR}/..
 target_link_libraries(wolfssl PRIVATE oqs)
 
 
-# Define the executables
-add_executable(create_root_certificate
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/create_root_certificate.c
+# Define a library for the common PKI functions
+add_library(kritis3m_pki_common STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/common.c
 )
 
-# Include directories
-target_include_directories(create_root_certificate PUBLIC
+target_include_directories(kritis3m_pki_common PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/config
-    ${CMAKE_CURRENT_SOURCE_DIR}/includes
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+target_link_libraries(kritis3m_pki_common PUBLIC wolfssl)
 
-# Link WolfSSL to the targets
-target_link_libraries(create_root_certificate PUBLIC wolfssl)
+
+# Define the executables
+add_executable(create_certificate
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/create_certificate.c
+)
+target_link_libraries(create_certificate PUBLIC kritis3m_pki_common)
+
+

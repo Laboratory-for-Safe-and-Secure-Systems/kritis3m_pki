@@ -52,8 +52,8 @@ extern "C" {
 #define ECC_SHAMIR
 #define ECC_TIMING_RESISTANT
 
-#define HAVE_WOLF_BIGINT
-#define HAVE_PKCS11
+// #define HAVE_WOLF_BIGINT
+// #define HAVE_PKCS11
 
 #define HAVE_LIBOQS
 #define WOLFSSL_DUAL_ALG_CERTS
