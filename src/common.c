@@ -212,7 +212,7 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                         return -1;
                 }
         }
-        else if ((key->type == FALCON_LEVEL1k) || (key->type == FALCON_LEVEL1k))
+        else if ((key->type == FALCON_LEVEL1k) || (key->type == FALCON_LEVEL5k))
         {
                 printf("Falcon key detected\n");
 
@@ -409,7 +409,6 @@ static int getSigAlgForKey(PrivateKey* key)
                 }
                 break;
         }
-                
         case DILITHIUM_LEVEL2k:
                 sigAlg = CTC_DILITHIUM_LEVEL2;
                 break;
@@ -482,7 +481,7 @@ int genAltCertInfo(AltKeyData* altKeyData, PrivateKey* issuerAltKey, PrivateKey*
 
         if (issuerAltKey->init == true)
         {
-                printf("Generating the PQC signature algorithm info\n");
+                printf("Generating the alternative signature algorithm info\n");
 
                 altKeyData->sigAlgSize = sizeof(altKeyData->sigAlgBuffer);
                 memset(altKeyData->sigAlgBuffer, 0, sizeof(altKeyData->sigAlgBuffer));

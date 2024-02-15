@@ -15,7 +15,7 @@
 #include "wolfssl/wolfcrypt/error-crypt.h"
 
 
-#define LARGE_TEMP_SZ 9216
+#define LARGE_TEMP_SZ 12288
 #define TEMP_SZ 256
 
 #define SubjectAltPublicKeyInfoExtension "2.5.29.72"
