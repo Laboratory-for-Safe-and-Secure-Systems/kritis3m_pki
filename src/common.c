@@ -8,7 +8,7 @@ int readFile(const char* filePath, uint8_t* buffer, size_t* bufferSize)
 
         if (file == NULL)
         {
-                fprintf(stderr, "file (%s) cannot be opened\n", filePath);
+                printf("file (%s) cannot be opened\n", filePath);
                 return -1;
         }
 
@@ -19,7 +19,7 @@ int readFile(const char* filePath, uint8_t* buffer, size_t* bufferSize)
 
         if (fileSize > *bufferSize)
         {
-                fprintf(stderr, "file (%s) is too large for buffer\n", filePath);
+                printf("file (%s) is too large for buffer\n", filePath);
                 fclose(file);
                 return -1;
         }
@@ -31,7 +31,7 @@ int readFile(const char* filePath, uint8_t* buffer, size_t* bufferSize)
                 int read = fread(buffer + bytesRead, sizeof(uint8_t), fileSize - bytesRead, file);
                 if (read < 0)
                 {
-                        fprintf(stderr, "unable to read file (%s)\n", filePath);
+                        printf("unable to read file (%s)\n", filePath);
                         fclose(file);
                         return -1;
                 }
@@ -53,7 +53,7 @@ int writeFile(const char* filePath, uint8_t* buffer, size_t bufferSize)
 
         if (file == NULL)
         {
-                fprintf(stderr, "file (%s) cannot be opened\n", filePath);
+                printf("file (%s) cannot be opened\n", filePath);
                 return -1;
         }
 
@@ -65,7 +65,7 @@ int writeFile(const char* filePath, uint8_t* buffer, size_t bufferSize)
                 int writen = fwrite(ptr, sizeof(uint8_t), bufferSize - bytesWriten, file);
                 if (writen < 0)
                 {
-                        fprintf(stderr, "unable to write file (%s)\n", filePath);
+                        printf("unable to write file (%s)\n", filePath);
                         fclose(file);
                         return -1;
                 }
@@ -107,22 +107,21 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
         int ret = 0;
         int index = 0;
 
-        printf("Loading private key from %s\n", filePath);
+        printf("Loading private key from \"%s\"\n", filePath);
 
         key->size = sizeof(key->buffer);
         ret = readFile(filePath, key->buffer, &key->size);
         if (ret != 0)
         {
-                fprintf(stderr, "unable to read file %s\n", filePath);
+                printf("unable to read file %s\n", filePath);
                 return -1;
         }
-        printf("Successfully read %lu bytes from %s\n", key->size, filePath);
+        printf("Successfully read %lu bytes \n", key->size);
 
-        printf("Decoding the key\n");
         ret = decodeKey(key->buffer, &key->size, &key->type);
         if (ret != 0)
         {
-                fprintf(stderr, "unable to decode key\n");
+                printf("unable to decode key\n");
                 return -1;
         }
 
@@ -133,7 +132,7 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                 ret = wc_InitRsaKey(&key->key.rsa, NULL);
                 if (ret != 0)
                 {
-                        fprintf(stderr, "unable to init RSA key\n");
+                        printf("unable to init RSA key\n");
                         return -1;
                 }
                 key->init = true;
@@ -142,7 +141,7 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                 ret = wc_RsaPrivateKeyDecode(key->buffer, &index, &key->key.rsa, key->size);
                 if (ret != 0)
                 {
-                        fprintf(stderr, "unable to decode RSA key\n");
+                        printf("unable to decode RSA key\n");
                         return -1;
                 }
         }
@@ -153,7 +152,7 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                 ret = wc_ecc_init(&key->key.ecc);
                 if (ret != 0)
                 {
-                        fprintf(stderr, "unable to init ECC key\n");
+                        printf("unable to init ECC key\n");
                         return -1;
                 }
                 key->init = true;
@@ -162,7 +161,7 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                 ret = wc_EccPrivateKeyDecode(key->buffer, &index, &key->key.ecc, key->size);
                 if (ret != 0)
                 {
-                        fprintf(stderr, "unable to decode ECC key\n");
+                        printf("unable to decode ECC key\n");
                         return -1;
                 }
         }
@@ -174,7 +173,7 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                 wc_dilithium_init(&key->key.dilithium);
                 if (ret != 0)
                 {
-                        fprintf(stderr, "unable to init Dilithium key\n");
+                        printf("unable to init Dilithium key\n");
                         return -1;
                 }
                 key->init = true;
@@ -194,13 +193,13 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                         ret = wc_dilithium_set_level(&key->key.dilithium, 5);
                         break;
                 default:
-                        fprintf(stderr, "unsupported key type %d\n", key->type);
+                        printf("unsupported key type %d\n", key->type);
                         ret = -1;
                         break;
                 }
                 if (ret < 0)
                 {
-                        fprintf(stderr, "unable to set Dilithium level\n");
+                        printf("unable to set Dilithium level\n");
                         return -1;
                 }
                 index = 0;
@@ -208,7 +207,7 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                                 &key->key.dilithium, key->size);
                 if (ret != 0)
                 {
-                        fprintf(stderr, "unable to decode Dilithium key\n");
+                        printf("unable to decode Dilithium key\n");
                         return -1;
                 }
         }
@@ -219,7 +218,7 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                 wc_falcon_init(&key->key.falcon);
                 if (ret != 0)
                 {
-                        fprintf(stderr, "unable to init Falcon key\n");
+                        printf("unable to init Falcon key\n");
                         return -1;
                 }
                 key->init = true;
@@ -235,13 +234,13 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                         ret = wc_falcon_set_level(&key->key.falcon, 5);
                         break;
                 default:
-                        fprintf(stderr, "unsupported key type %d\n", key->type);
+                        printf("unsupported key type %d\n", key->type);
                         ret = -1;
                         break;
                 }
                 if (ret < 0)
                 {
-                        fprintf(stderr, "unable to set Falcon level\n");
+                        printf("unable to set Falcon level\n");
                         return -1;
                 }
                 index = 0;
@@ -249,18 +248,18 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                                 &key->key.falcon, key->size);
                 if (ret != 0)
                 {
-                        fprintf(stderr, "unable to decode Falcon key\n");
+                        printf("unable to decode Falcon key\n");
                         return -1;
                 
                 }
         }
         else
         {
-                fprintf(stderr, "unsupported key type %d\n", key->type);
+                printf("unsupported key type %d\n", key->type);
                 return -1;
         }
         
-        printf("Successfully decoded private key from %s\n\n", filePath);
+        printf("\n");
 
         return 0;
 }
@@ -274,25 +273,23 @@ int loadIssuerCert(const char* filePath, IssuerCert* cert)
 
         memset(&info, 0, sizeof(EncryptedInfo));
 
-        printf("Loading issuer certificate from %s\n", filePath);
+        printf("Loading issuer certificate from \"%s\"\n", filePath);
 
         cert->size = sizeof(cert->buffer);
         ret = readFile(filePath, cert->buffer, &cert->size);
         if (ret != 0)
         {
-                fprintf(stderr, "unable to read file %s\n", filePath);
+                printf("unable to read file %s\n", filePath);
                 return -1;
         }
-        printf("Successfully read %lu bytes from %s\n", cert->size, filePath);
-
-        printf("Decoding the issuer certificate\n");
+        printf("Successfully read %lu bytes\n", cert->size);
 
         /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer
          * object. */
         ret = PemToDer(cert->buffer, cert->size, CERT_TYPE, &der, NULL, &info, NULL);
         if (ret != 0)
         {
-                fprintf(stderr, "unable to convert PEM to DER\n");
+                printf("unable to convert PEM to DER\n");
                 FreeDer(&der);
                 return -1;
         }
@@ -308,7 +305,7 @@ int loadIssuerCert(const char* filePath, IssuerCert* cert)
 
         cert->init = true;
 
-        printf("Successfully decoded issuer certificate\n");
+        printf("Successfully decoded issuer certificate\n\n");
 
         return 0;
 }
@@ -363,7 +360,7 @@ int storeOutputCert(const char* filePath, OutputCert* outputCert)
                 outputCert->size2 = ret;
         else
         {
-                fprintf(stderr, "unable to convert DER to PEM\n");
+                printf("unable to convert DER to PEM\n");
                 return -1;
         }
 
@@ -372,7 +369,7 @@ int storeOutputCert(const char* filePath, OutputCert* outputCert)
         ret = writeFile(filePath, outputCert->buffer2, outputCert->size2);
         if (ret != 0)
         {
-                fprintf(stderr, "unable to write file %s\n", filePath);
+                printf("unable to write file %s\n", filePath);
                 return -1;
         }
 
@@ -403,7 +400,7 @@ static int getSigAlgForKey(PrivateKey* key)
                         sigAlg = CTC_SHA512wECDSA;
                         break;
                 default:
-                        fprintf(stderr, "unsupported ECC curve size: %d\n",
+                        printf("unsupported ECC curve size: %d\n",
                                 key->key.ecc.dp->size);
                         sigAlg = -1;
                 }
@@ -445,7 +442,8 @@ int genAltCertInfo(AltKeyData* altKeyData, PrivateKey* issuerAltKey, PrivateKey*
                 altKeyData->pubKeySize = sizeof(altKeyData->pubKeyBuffer);
                 if (ownAltKey->type == RSAk)
                 {
-
+                        ret = wc_RsaKeyToPublicDer(&ownAltKey->key.rsa, altKeyData->pubKeyBuffer,
+                                                   (word32)altKeyData->pubKeySize);
                 }
                 else if (ownAltKey->type == ECDSAk)
                 {
@@ -468,7 +466,7 @@ int genAltCertInfo(AltKeyData* altKeyData, PrivateKey* issuerAltKey, PrivateKey*
                         altKeyData->pubKeySize = ret;
                 else 
                 {
-                        fprintf(stderr, "unable to export alternative public key\n");
+                        printf("unable to export alternative public key\n");
                         return -1;
                 }
         }
@@ -489,7 +487,7 @@ int genAltCertInfo(AltKeyData* altKeyData, PrivateKey* issuerAltKey, PrivateKey*
                 altKeyData->sigAlgOID = getSigAlgForKey(issuerAltKey);
                 if (altKeyData->sigAlgOID <= 0)
                 {
-                        fprintf(stderr, "unable to get signature algorithm info\n");
+                        printf("unable to get signature algorithm info\n");
                         return -1;
                 }
 
@@ -498,7 +496,7 @@ int genAltCertInfo(AltKeyData* altKeyData, PrivateKey* issuerAltKey, PrivateKey*
                                                 oidSigType, 0);
                 if (altKeyData->sigAlgSize <= 0)
                 {
-                        fprintf(stderr, "unable to set signature algorithm info\n");
+                        printf("unable to set signature algorithm info\n");
                         return -1;
                 }
         }
@@ -508,8 +506,6 @@ int genAltCertInfo(AltKeyData* altKeyData, PrivateKey* issuerAltKey, PrivateKey*
                  * an alternative signature algorithm. */
                 altKeyData->sigAlgSize = 0;
         }
-
-        printf("Successfully generated alternative certificate algorithm info\n");
 
         return 0;
 }
@@ -527,7 +523,7 @@ int prepareOutputCert(OutputCert* outputCert, PrivateKey* issuerKey, AltKeyData*
         outputCert->cert.sigType = getSigAlgForKey(issuerKey);
         if (outputCert->cert.sigType <= 0)
         {
-                fprintf(stderr, "unable to get signature algorithm info\n");
+                printf("unable to get signature algorithm info\n");
                 return -1;
         }
 
@@ -542,7 +538,7 @@ int prepareOutputCert(OutputCert* outputCert, PrivateKey* issuerKey, AltKeyData*
                                             altKeyData->pubKeySize);
                 if (ret < 0)
                 {
-                        fprintf(stderr, "unable to set custom extension for PQC public key\n");
+                        printf("unable to set custom extension for PQC public key\n");
                         return -1;
                 }
         }
@@ -558,7 +554,7 @@ int prepareOutputCert(OutputCert* outputCert, PrivateKey* issuerKey, AltKeyData*
                                             altKeyData->sigAlgSize);
                 if (ret < 0)
                 {
-                        fprintf(stderr, "unable to set custom extension for signature algorithm type\n");
+                        printf("unable to set custom extension for signature algorithm type\n");
                         return -1;
                 }
         }
@@ -578,7 +574,7 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
         ret = wc_InitRng(&rng);
         if (ret != 0)
         {
-                fprintf(stderr, "unable to init RNG\n");
+                printf("unable to init RNG\n");
                 return -1;
         }
         
@@ -599,7 +595,7 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                                      &ownKey->key, &rng);
                 if (ret <= 0)
                 {
-                        fprintf(stderr, "unable to make temporary certificate\n");
+                        printf("unable to make temporary certificate\n");
                         return -1;
                 }
 
@@ -609,7 +605,7 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                                      issuerKey->certKeyType, &issuerKey->key, &rng);
                 if (ret <= 0)
                 {
-                        fprintf(stderr, "unable to sign temporary certificate\n");
+                        printf("unable to sign temporary certificate\n");
                         return -1;
                 }
                 outputCert->size1 = ret;
@@ -620,14 +616,14 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                 ret = wc_ParseCert(&outputCert->preTbs, CERT_TYPE, NO_VERIFY, NULL);
                 if (ret < 0)
                 {
-                        fprintf(stderr, "unable to parse temporary certificate\n");
+                        printf("unable to parse temporary certificate\n");
                         return -1;
                 }
 
                 ret = wc_GeneratePreTBS(&outputCert->preTbs, outputCert->buffer2, outputCert->size2);
                 if (ret < 0)
                 {
-                        fprintf(stderr, "unable to generate PreTBS data\n");
+                        printf("unable to generate PreTBS data\n");
                         return -1;
                 }
                 printf("PreTBS data is %d bytes.\n", ret);
@@ -640,7 +636,7 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                                            &issuerAltKey->key, &rng);
                 if (ret < 0)
                 {
-                        fprintf(stderr, "unable to make alternative signature\n");
+                        printf("unable to make alternative signature\n");
                         return -1;
                 }
                 altKeyData->sigSize = ret;
@@ -653,7 +649,7 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                                             altKeyData->sigSize);
                 if (ret < 0)
                 {
-                        fprintf(stderr, "unable to set custom extension for alternative signature\n");
+                        printf("unable to set custom extension for alternative signature\n");
                         return -1;
                 }
         }
@@ -665,7 +661,7 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                              &ownKey->key, &rng);
         if (ret <= 0)
         {
-                fprintf(stderr, "unable to make final certificate\n");
+                printf("unable to make final certificate\n");
                 return -1;
         }
 
@@ -675,7 +671,7 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                              issuerKey->certKeyType, &issuerKey->key, &rng);
         if (ret <= 0)
         {
-                fprintf(stderr, "unable to sign final certificate\n");
+                printf("unable to sign final certificate\n");
                 return -1;
         }
         outputCert->size1 = ret;

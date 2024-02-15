@@ -202,6 +202,8 @@ int main(int argc, char** argv)
         if (ret != 0)
                 goto exit;
 
+        printf("Setting certificate metadata\n");
+
         /* Set metadata */
         strncpy(outputCert.cert.subject.commonName, commonName, CTC_NAME_SIZE);
         strncpy(outputCert.cert.subject.country, SUBJECT_COUNTRY, CTC_NAME_SIZE);
@@ -213,15 +215,53 @@ int main(int argc, char** argv)
 
         outputCert.cert.daysValid = 365*2; /* 2 years */
 
-        if (enableCA)
-                outputCert.cert.isCA = 1;
-        else
-                outputCert.cert.isCA = 0;
+        /* Set the Subject Key Identifier to our own key */
+        ret = wc_SetSubjectKeyIdFromPublicKey_ex(&outputCert.cert, ownKey.certKeyType,
+                                                   &ownKey.key);
+        if (ret != 0)
+                goto exit;
         
         if (issuerCert.init)
         {
-                 /* Set the issuer */
+                /* Set the issuer */
                 ret = wc_SetIssuerBuffer(&outputCert.cert, issuerCert.buffer, issuerCert.size);
+                if (ret != 0)
+                        goto exit;
+                
+                /* Set the Authority Key Identifier to the one of the issuer key */
+                ret = wc_SetAuthKeyIdFromPublicKey_ex(&outputCert.cert, issuerKey.certKeyType,
+                                                      &issuerKey.key);
+                if (ret != 0)
+                        goto exit;
+        }
+        else
+        {
+                /* Set the Authority Key Identifier to our own key */
+                ret = wc_SetAuthKeyIdFromPublicKey_ex(&outputCert.cert, ownKey.certKeyType,
+                                                      &ownKey.key);
+                if (ret != 0)
+                        goto exit;
+        }
+
+        if (enableCA)
+        {
+                outputCert.cert.isCA = 1;
+
+                /* Limit key usage to only sign new certificates */
+                ret = wc_SetKeyUsage(&outputCert.cert, "keyCertSign");
+                if (ret != 0)
+                        goto exit;
+        }
+        else
+        {
+                outputCert.cert.isCA = 0;
+
+                /* Limit key usage to only sign messages in TLS handshake */
+                ret = wc_SetKeyUsage(&outputCert.cert, "digitalSignature");
+                if (ret != 0)
+                        goto exit;
+                
+                ret = wc_SetExtKeyUsage(&outputCert.cert, "serverAuth,clientAuth");
                 if (ret != 0)
                         goto exit;
         }
@@ -236,7 +276,7 @@ int main(int argc, char** argv)
         ret = storeOutputCert(outputFilePath, &outputCert);
 
         if (ret == 0)
-                printf("SUCCESS!\n");
+                printf("SUCCESS!\n\n");
 
 exit:
 
