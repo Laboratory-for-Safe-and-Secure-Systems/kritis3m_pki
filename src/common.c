@@ -652,6 +652,14 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                         printf("unable to set custom extension for alternative signature\n");
                         return -1;
                 }
+
+                /* Set the validity dates of the preTBS cert for the new certs. This is
+                 * necessary as we have to make sure that the signed preTBS data is exactly
+                 * the same as the data that lands in the final cert. */
+                memcpy(outputCert->cert.beforeDate, outputCert->preTbs.beforeDate, outputCert->preTbs.beforeDateLen);
+                outputCert->cert.beforeDateSz = outputCert->preTbs.beforeDateLen;
+                memcpy(outputCert->cert.afterDate, outputCert->preTbs.afterDate, outputCert->preTbs.afterDateLen);
+                outputCert->cert.afterDateSz = outputCert->preTbs.afterDateLen;
         }
 
         /* Finally, generate the final certificate. */
