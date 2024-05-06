@@ -8,7 +8,7 @@ include(FetchContent)
 Set(FETCHCONTENT_QUIET FALSE)
 
 
-# External repositories we need 
+# External repositories we need
 FetchContent_Declare(liboqs
     GIT_REPOSITORY          https://github.com/Frauschi/liboqs.git
     GIT_TAG                 origin/main
@@ -70,10 +70,17 @@ target_include_directories(kritis3m_pki_common PUBLIC
 target_link_libraries(kritis3m_pki_common PUBLIC wolfssl)
 
 
+# Create a combined static library that includes all dependencies
+set(LIBNAME "kritis3m_pki.a")
+add_custom_command(TARGET kritis3m_pki_common POST_BUILD
+    COMMAND ${CMAKE_AR} -rcT ${LIBNAME} $<TARGET_FILE:kritis3m_pki_common> $<TARGET_FILE:wolfssl> $<TARGET_FILE:oqs>
+    DEPENDS kritis3m_pki_common wolfssl oqs
+    COMMENT "Creating combined static library ${LIBNAME}"
+)
+
+
 # Define the executables
 add_executable(create_certificate
     ${CMAKE_CURRENT_SOURCE_DIR}/src/create_certificate.c
 )
 target_link_libraries(create_certificate PUBLIC kritis3m_pki_common)
-
-
