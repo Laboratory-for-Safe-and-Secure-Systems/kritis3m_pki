@@ -71,10 +71,19 @@ target_link_libraries(kritis3m_pki_common PUBLIC wolfssl)
 
 
 # Create a combined static library that includes all dependencies
-set(LIBNAME "kritis3m_pki.a")
+set(LIBNAME "libkritis3m_pki.a")
+set(create_combined_lib_script
+    "create ${LIBNAME}\naddlib $<TARGET_FILE:kritis3m_pki_common>\naddlib $<TARGET_FILE:wolfssl>\naddlib $<TARGET_FILE:oqs>\nsave\nend\n"
+)
+
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/create_combined_lib_script.ar"
+    CONTENT ${create_combined_lib_script}
+    CONDITION 1
+)
+
 add_custom_command(TARGET kritis3m_pki_common POST_BUILD
-    COMMAND ${CMAKE_AR} -rcT ${LIBNAME} $<TARGET_FILE:kritis3m_pki_common> $<TARGET_FILE:wolfssl> $<TARGET_FILE:oqs>
-    DEPENDS kritis3m_pki_common wolfssl oqs
+    DEPENDS wolfssl oqs
+    COMMAND ${CMAKE_AR} -M < create_combined_lib_script.ar
     COMMENT "Creating combined static library ${LIBNAME}"
 )
 

@@ -3,6 +3,7 @@
 
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "wolfssl/options.h"
 #include "wolfssl/wolfcrypt/settings.h"
@@ -30,7 +31,7 @@ typedef struct privateKey
         int type;
         int certKeyType;
         bool init;
-        union 
+        union
         {
                 ecc_key ecc;
                 RsaKey rsa;

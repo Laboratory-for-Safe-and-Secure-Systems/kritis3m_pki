@@ -74,6 +74,8 @@ int writeFile(const char* filePath, uint8_t* buffer, size_t bufferSize)
         }
 
         fclose(file);
+
+        return 0;
 }
 
 
@@ -105,7 +107,7 @@ int decodeKey(uint8_t* buffer, size_t* buffer_size, int* key_type)
 int loadPrivateKey(const char* filePath, PrivateKey* key)
 {
         int ret = 0;
-        int index = 0;
+        word32 index = 0;
 
         printf("Loading private key from \"%s\"\n", filePath);
 
@@ -250,7 +252,7 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                 {
                         printf("unable to decode Falcon key\n");
                         return -1;
-                
+
                 }
         }
         else
@@ -258,7 +260,7 @@ int loadPrivateKey(const char* filePath, PrivateKey* key)
                 printf("unsupported key type %d\n", key->type);
                 return -1;
         }
-        
+
         printf("\n");
 
         return 0;
@@ -353,7 +355,7 @@ int storeOutputCert(const char* filePath, OutputCert* outputCert)
         outputCert->size2 = sizeof(outputCert->buffer2);
 
         printf("Converting the new certificate to PEM\n");
-        
+
         ret = wc_DerToPem(outputCert->buffer1, outputCert->size1, outputCert->buffer2,
                           outputCert->size2, CERT_TYPE);
         if (ret > 0)
@@ -365,7 +367,7 @@ int storeOutputCert(const char* filePath, OutputCert* outputCert)
         }
 
         printf("Writing newly generated certificate to file \"%s\"\n", filePath);
-        
+
         ret = writeFile(filePath, outputCert->buffer2, outputCert->size2);
         if (ret != 0)
         {
@@ -464,7 +466,7 @@ int genAltCertInfo(AltKeyData* altKeyData, PrivateKey* issuerAltKey, PrivateKey*
 
                 if (ret > 0)
                         altKeyData->pubKeySize = ret;
-                else 
+                else
                 {
                         printf("unable to export alternative public key\n");
                         return -1;
@@ -527,12 +529,12 @@ int prepareOutputCert(OutputCert* outputCert, PrivateKey* issuerKey, AltKeyData*
                 return -1;
         }
 
-        /* Store the custom extension for the alternative public key (only when 
+        /* Store the custom extension for the alternative public key (only when
          * we generate a new hybrid certificate).
          */
         if (altKeyData->pubKeySize > 0)
         {
-                ret = wc_SetCustomExtension(&outputCert->cert, 0, 
+                ret = wc_SetCustomExtension(&outputCert->cert, 0,
                                             SubjectAltPublicKeyInfoExtension,
                                             altKeyData->pubKeyBuffer,
                                             altKeyData->pubKeySize);
@@ -577,10 +579,10 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                 printf("unable to init RNG\n");
                 return -1;
         }
-        
+
         outputCert->size1 = sizeof(outputCert->buffer1);
         memset(outputCert->buffer1, 0, outputCert->size1);
-        
+
         /* Check if have to create the alternative signature */
         if (issuerAltKey->init == true)
         {
@@ -609,7 +611,7 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                         return -1;
                 }
                 outputCert->size1 = ret;
-                
+
                 /* extract the TBS data for signing with alternative key */
                 wc_InitDecodedCert(&outputCert->preTbs, outputCert->buffer1, outputCert->size1, 0);
                 outputCert->preTbsInit = true;
@@ -643,7 +645,7 @@ int finalizeOutputCert(OutputCert* outputCert, PrivateKey* issuerKey,
                 printf("Alternative signature is %lu bytes.\n", altKeyData->sigSize);
 
                 /* Store the alternative signature in the new certificate */
-                ret = wc_SetCustomExtension(&outputCert->cert, 0, 
+                ret = wc_SetCustomExtension(&outputCert->cert, 0,
                                             AltSignatureValueExtension,
                                             altKeyData->sigBuffer,
                                             altKeyData->sigSize);
