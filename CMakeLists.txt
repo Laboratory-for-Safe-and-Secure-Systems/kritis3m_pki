@@ -93,3 +93,16 @@ add_executable(create_certificate
     ${CMAKE_CURRENT_SOURCE_DIR}/src/create_certificate.c
 )
 target_link_libraries(create_certificate PUBLIC kritis3m_pki_common)
+
+# Install the executable
+install(TARGETS create_certificate RUNTIME DESTINATION bin)
+
+# Install the library files
+install(TARGETS kritis3m_pki_common ARCHIVE DESTINATION lib)
+
+# Install header files
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION include/kritis3m_pki)
+
+# Additional header directories from the fetched content if needed
+install(DIRECTORY ${OQS_BINARY_DIR}/../include/ DESTINATION include/liboqs)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config/wolfssl/ DESTINATION include/wolfssl)
