@@ -5,12 +5,9 @@
 #include <errno.h>
 #include <getopt.h>
 
-#include "common.h"
-
-#if !defined(WOLFSSL_DUAL_ALG_CERTS) || !defined(HAVE_LIBOQS)
-#error "DUAL_ALG_CERTS and HAVE_LIBOQS must be enabled"
-#endif
-
+#include "cli_common.h"
+#include "kritis3m_pki_client.h"
+#include "kritis3m_pki_server.h"
 
 
 #define SUBJECT_COUNTRY "DE"
@@ -21,12 +18,15 @@
 #define SUBJECT_EMAIL "las3@oth-regensburg.de"
 
 
+#define ERROR_OUT(msg...) { fprintf(stderr, msg); ret = -1; goto exit; }
+
+
 static const struct option cli_options[] =
 {
         { "issuerKey",          required_argument, 0, 'a' },
         { "issuerAltKey",       required_argument, 0, 'b' },
         { "issuerCert",         required_argument, 0, 'c' },
-        { "ownKey",             required_argument, 0, 'd' }, 
+        { "ownKey",             required_argument, 0, 'd' },
         { "ownAltKey",          required_argument, 0, 'e' },
         { "output",             required_argument, 0, 'f' },
         { "enableCA",           no_argument,       0, 'g' },
@@ -64,13 +64,11 @@ int main(int argc, char** argv)
         char const* ownAltKeyPath = NULL;
         char const* outputFilePath = NULL;
 
-        PrivateKey issuerKey;
-        PrivateKey issuerAltKey;
-        IssuerCert issuerCert;
-        PrivateKey ownKey;
-        PrivateKey ownAltKey;
-        AltKeyData altKeyData;
-        OutputCert outputCert;
+        PrivateKey* issuerKey = privateKey_new();
+        IssuerCert* issuerCert = issuerCert_new();
+        PrivateKey* ownKey = privateKey_new();
+        SigningRequest* request = signingRequest_new();
+        OutputCert* outputCert = outputCert_new();
 
         bool enableCA = false;
         char const* commonName = NULL;
@@ -80,7 +78,7 @@ int main(int argc, char** argv)
         {
                 int result = getopt_long(argc, argv, "a:b:c:d:e:f:g:i:h", cli_options, &index);
 
-                if (result == -1) 
+                if (result == -1)
                         break; /* end of list */
 
                 switch (result)
@@ -137,7 +135,7 @@ int main(int argc, char** argv)
         }
         else if (strcmp(issuerKeyPath, ownKeyPath) == 0)
         {
-                if ((issuerAltKeyPath != NULL && ownAltKeyPath == NULL) || 
+                if ((issuerAltKeyPath != NULL && ownAltKeyPath == NULL) ||
                         (issuerAltKeyPath == NULL && ownAltKeyPath != NULL))
                 {
                         fprintf(stderr, "we need the alternative key for both issuerAltKey and ownAltKey to generate a hybrid self-signed certificate\n");
@@ -146,146 +144,130 @@ int main(int argc, char** argv)
                 }
         }
 
+        /* Create a buffer to read the file contents */
+        static const size_t bufferSize = 32 * 1024;
+        size_t bytesInBuffer = bufferSize;
+        uint8_t* buffer = (uint8_t*) malloc(bufferSize);
+        if (buffer == NULL)
+                ERROR_OUT("unable to allocate buffer\n");
+
         /* Load the primary issuer key */
-        ret = loadPrivateKey(issuerKeyPath, &issuerKey);
-        if (ret != 0)
-                goto exit;
+        ret = readFile(issuerKeyPath, buffer, &bytesInBuffer);
+        if (ret < 0)
+                ERROR_OUT("unable to read issuer key file from %s\n", issuerKeyPath);
+
+        ret = privateKey_loadKeyFromBuffer(issuerKey, buffer, bytesInBuffer);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                ERROR_OUT("unable to parse issuer key: %d\n", ret);
 
         /* Load the primary own key */
-        ret = loadPrivateKey(ownKeyPath, &ownKey);
-        if (ret != 0)
-                goto exit;
+        bytesInBuffer = bufferSize;
+        ret = readFile(ownKeyPath, buffer, &bytesInBuffer);
+        if (ret < 0)
+                ERROR_OUT("unable to read own key file from %s\n", ownKeyPath);
+
+        ret = privateKey_loadKeyFromBuffer(ownKey, buffer, bytesInBuffer);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                ERROR_OUT("unable to parse own key: %d\n", ret);
 
         /* Load the alternative issuer key */
         if (issuerAltKeyPath != NULL)
         {
-                ret = loadPrivateKey(issuerAltKeyPath, &issuerAltKey);
-                if (ret != 0)
-                        goto exit;
-        }
-        else 
-        {
-                issuerAltKey.init = false;
+                bytesInBuffer = bufferSize;
+                ret = readFile(issuerAltKeyPath, buffer, &bytesInBuffer);
+                if (ret < 0)
+                        ERROR_OUT("unable to read issuer alt key file from %s\n", issuerAltKeyPath);
+
+                ret = privateKey_loadAltKeyFromBuffer(issuerKey, buffer, bytesInBuffer);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to parse issuer alt key: %d\n", ret);
         }
 
         /* Load the alternative own key */
         if (ownAltKeyPath != NULL)
         {
-                ret = loadPrivateKey(ownAltKeyPath, &ownAltKey);
-                if (ret != 0)
-                        goto exit;
-        }
-        else 
-        {
-                ownAltKey.init = false;
+                bytesInBuffer = bufferSize;
+                ret = readFile(ownAltKeyPath, buffer, &bytesInBuffer);
+                if (ret < 0)
+                        ERROR_OUT("unable to read own alt key file from %s\n", ownAltKeyPath);
+
+                ret = privateKey_loadAltKeyFromBuffer(ownKey, buffer, bytesInBuffer);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to parse own alt key: %d\n", ret);
         }
 
         /* Load the issuer certificate */
         if (issuerCertPath != NULL)
         {
-                ret = loadIssuerCert(issuerCertPath, &issuerCert);
-                if (ret != 0)
-                        goto exit;
+                bytesInBuffer = bufferSize;
+                ret = readFile(issuerCertPath, buffer, &bytesInBuffer);
+                if (ret < 0)
+                        ERROR_OUT("unable to read issuer cert file from %s\n", issuerCertPath);
+
+                ret = issuerCert_initFromBuffer(issuerCert, buffer, bytesInBuffer);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to parse issuer cert: %d\n", ret);
         }
-        else
-        {
-                issuerCert.init = false;
-        }
 
-        /* Generate the certificate info for the alternative data */
-        ret = genAltCertInfo(&altKeyData, &issuerAltKey, &ownAltKey);
-        if (ret != 0)
-                goto exit;
+        /* Create the CSR */
+        ret = signingRequest_init(request, commonName);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                ERROR_OUT("unable to create CSR: %d\n", ret);
 
-        /* Create a new certificate. */
-        ret = prepareOutputCert(&outputCert, &issuerKey, &altKeyData);
-        if (ret != 0)
-                goto exit;
+        bytesInBuffer = bufferSize;
+        ret = signingRequest_finalize(request, ownKey, buffer, &bytesInBuffer);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                ERROR_OUT("unable to finalize CSR: %d\n", ret);
 
-        printf("Setting certificate metadata\n");
+        /* Create the new certificate from the CSR. */
+        ret = outputCert_initFromCsr(outputCert, buffer, bytesInBuffer);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                ERROR_OUT("unable to parse CSR: %d\n", ret);
 
-        /* Set metadata */
-        strncpy(outputCert.cert.subject.commonName, commonName, CTC_NAME_SIZE);
-        strncpy(outputCert.cert.subject.country, SUBJECT_COUNTRY, CTC_NAME_SIZE);
-        // strncpy(outputCert.cert.subject.state, SUBJECT_STATE, CTC_NAME_SIZE);
-        // strncpy(outputCert.cert.subject.locality, SUBJECT_LOCALITY, CTC_NAME_SIZE);
-        strncpy(outputCert.cert.subject.org, SUBJECT_ORG, CTC_NAME_SIZE);
-        strncpy(outputCert.cert.subject.unit, SUBJECT_UNIT, CTC_NAME_SIZE);
-        // strncpy(outputCert.cert.subject.email, SUBJECT_EMAIL, CTC_NAME_SIZE);
+        /* Set the issuer data */
+        ret = outputCert_setIssuerData(outputCert, issuerCert, issuerKey);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                ERROR_OUT("unable to set issuer data: %d\n", ret);
 
-        outputCert.cert.daysValid = 365*2; /* 2 years */
-
-        /* Set the Subject Key Identifier to our own key */
-        ret = wc_SetSubjectKeyIdFromPublicKey_ex(&outputCert.cert, ownKey.certKeyType,
-                                                   &ownKey.key);
-        if (ret != 0)
-                goto exit;
-        
-        if (issuerCert.init)
-        {
-                /* Set the issuer */
-                ret = wc_SetIssuerBuffer(&outputCert.cert, issuerCert.buffer, issuerCert.size);
-                if (ret != 0)
-                        goto exit;
-                
-                /* Set the Authority Key Identifier to the one of the issuer key */
-                ret = wc_SetAuthKeyIdFromPublicKey_ex(&outputCert.cert, issuerKey.certKeyType,
-                                                      &issuerKey.key);
-                if (ret != 0)
-                        goto exit;
-        }
-        else
-        {
-                /* Set the Authority Key Identifier to our own key */
-                ret = wc_SetAuthKeyIdFromPublicKey_ex(&outputCert.cert, ownKey.certKeyType,
-                                                      &ownKey.key);
-                if (ret != 0)
-                        goto exit;
-        }
+        /* Set the validity period */
+        outputCert_setValidity(outputCert, 365*2); /* 2 years */
 
         if (enableCA)
         {
-                outputCert.cert.isCA = 1;
-
-                /* Limit key usage to only sign new certificates */
-                ret = wc_SetKeyUsage(&outputCert.cert, "keyCertSign");
-                if (ret != 0)
-                        goto exit;
+                /* Cert is a CA certificate */
+                ret = outputCert_configureAsCA(outputCert);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to configure new cert as CA: %d\n", ret);
         }
         else
         {
-                outputCert.cert.isCA = 0;
-
-                /* Limit key usage to only sign messages in TLS handshake */
-                ret = wc_SetKeyUsage(&outputCert.cert, "digitalSignature");
-                if (ret != 0)
-                        goto exit;
-                
-                ret = wc_SetExtKeyUsage(&outputCert.cert, "serverAuth,clientAuth");
-                if (ret != 0)
-                        goto exit;
+                /* Cert is an entity certificate */
+                ret = outputCert_configureAsEntity(outputCert);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to configure new cert as entity: %d\n", ret);
         }
 
         /* Finalize the certificate. */
-        ret = finalizeOutputCert(&outputCert, &issuerKey, &issuerAltKey,
-                                 &ownKey, &altKeyData);
-        if (ret != 0)
-                goto exit;
+        bytesInBuffer = bufferSize;
+        ret = outputCert_finalize(outputCert, issuerKey, buffer, &bytesInBuffer);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                ERROR_OUT("unable to finalize new cert: %d\n", ret);
 
         /* Write the new cert to file */
-        ret = storeOutputCert(outputFilePath, &outputCert);
-
+        ret = writeFile(outputFilePath, buffer, bytesInBuffer);
+        if (ret < 0)
+                ERROR_OUT("unable to write output cert to %s\n", outputFilePath);
         if (ret == 0)
                 printf("SUCCESS!\n\n");
 
 exit:
 
-        freePrivateKey(&issuerKey);
-        freePrivateKey(&issuerAltKey);
-        freePrivateKey(&ownKey);
-        freePrivateKey(&ownAltKey);
+        privateKey_free(issuerKey);
+        privateKey_free(ownKey);
 
-        freeOutputCert(&outputCert);
+        signingRequest_free(request);
+
+        outputCert_free(outputCert);
 
         if (ret != 0)
                 printf("Failure code was %d\n", ret);
