@@ -64,12 +64,15 @@ cleanup:
 /* Free the memory of given IssuerCert */
 void issuerCert_free(IssuerCert* cert)
 {
-        if (cert->init && cert->buffer != NULL)
+        if (cert != NULL)
         {
-                free(cert->buffer);
-        }
+                if (cert->init && cert->buffer != NULL)
+                {
+                        free(cert->buffer);
+                }
 
-        free(cert);
+                free(cert);
+        }
 }
 
 
@@ -105,13 +108,13 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
         bool decodedCertInit = false;
 
         /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer object. */
-        ret = PemToDer(buffer, buffer_size, CERTREQ_TYPE, &der, NULL, NULL, NULL);
+        ret = wc_PemToDer(buffer, buffer_size, CERTREQ_TYPE, &der, NULL, NULL, NULL);
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_PEM_DECODE_ERROR);
 
         /* Decode the parsed CSR to access its internal fields for the final certificate */
-        InitDecodedCert(&decodedCert, der->buffer, der->length, NULL);
-        ret = ParseCert(&decodedCert, CERTREQ_TYPE, VERIFY, NULL);
+        wc_InitDecodedCert(&decodedCert, der->buffer, der->length, NULL);
+        ret = wc_ParseCert(&decodedCert, CERTREQ_TYPE, VERIFY, NULL);
         decodedCertInit = true;
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
@@ -222,6 +225,20 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
         if (decodedCert.subjectEmail)
                 strncpy(outputCert->cert.subject.email, decodedCert.subjectEmail, decodedCert.subjectEmailLen);
 
+        /* Copy the altNames */
+        if (decodedCert.altNames)
+        {
+                /* Copy the altNames from the CSR to the new certificate. This uses WolfSSL internal API */
+                ret = FlattenAltNames(outputCert->cert.altNames, sizeof(outputCert->cert.altNames),
+                                      decodedCert.altNames);
+                if (ret >= 0)
+                {
+                        outputCert->cert.altNamesSz = ret;
+                }
+                else
+                        ERROR_OUT(KRITIS3M_PKI_CERT_ERROR);
+        }
+
         /* Copy the SubjectAltPublicKeyInfoExtension */
         if (decodedCert.extSapkiSet && decodedCert.sapkiDer != NULL)
         {
@@ -245,9 +262,9 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
         ret = KRITIS3M_PKI_SUCCESS;
 
 cleanup:
-        FreeDer(&der);
+        wc_FreeDer(&der);
         if (decodedCertInit)
-                FreeDecodedCert(&decodedCert);
+                wc_FreeDecodedCert(&decodedCert);
 
         return ret;
 }
@@ -504,15 +521,18 @@ cleanup:
 /* Free the memory of given OutputCert */
 void outputCert_free(OutputCert* outputCert)
 {
-        freeSinglePrivateKey(&outputCert->ownKey);
+        if (outputCert != NULL)
+        {
+                freeSinglePrivateKey(&outputCert->ownKey);
 
-        if (outputCert->altPubKeyDer != NULL)
-                free(outputCert->altPubKeyDer);
-        if (outputCert->altSigAlgDer != NULL)
-                free(outputCert->altSigAlgDer);
-        if (outputCert->altSigValDer != NULL)
-                free(outputCert->altSigValDer);
+                if (outputCert->altPubKeyDer != NULL)
+                        free(outputCert->altPubKeyDer);
+                if (outputCert->altSigAlgDer != NULL)
+                        free(outputCert->altSigAlgDer);
+                if (outputCert->altSigValDer != NULL)
+                        free(outputCert->altSigValDer);
 
-        free(outputCert);
+                free(outputCert);
+        }
 }
 

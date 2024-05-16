@@ -17,11 +17,11 @@ typedef struct signingRequest SigningRequest;
 SigningRequest* signingRequest_new(void);
 
 
-/* Initialize the SigningRequest with given subject data.
+/* Initialize the SigningRequest with given subject data and altName.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int signingRequest_init(SigningRequest* request, const char* CN);
+int signingRequest_init(SigningRequest* request, char const* CN, char const* altName);
 
 
 /* Finalize the SigningRequest using the related private key. Store the final PEM encoded output

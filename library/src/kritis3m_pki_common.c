@@ -249,9 +249,12 @@ void freeSinglePrivateKey(SinglePrivateKey* key)
 /* Free the memory of given PrivateKey */
 void privateKey_free(PrivateKey* key)
 {
-        freeSinglePrivateKey(&key->primaryKey);
-        freeSinglePrivateKey(&key->alternativeKey);
+        if (key != NULL)
+        {
+                freeSinglePrivateKey(&key->primaryKey);
+                freeSinglePrivateKey(&key->alternativeKey);
 
-        free(key);
+                free(key);
+        }
 }
 
