@@ -38,6 +38,9 @@ int signingRequest_init(SigningRequest* request, char const* CN, char const* alt
         int ret = KRITIS3M_PKI_SUCCESS;
         DNS_entry* altNameEncoded = NULL;
 
+        if (request == NULL || CN == NULL)
+                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+
         /* Initialize the certificate request structure */
         ret = wc_InitCert(&request->req);
         if (ret != 0)
@@ -101,6 +104,9 @@ cleanup:
 static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
+
+        if (request == NULL || key == NULL)
+                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
 
         if (key->init == true)
         {
@@ -229,6 +235,9 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
         DecodedCert decodedCert;
         bool decodedCertInit = false;
 
+        if (request == NULL || key == NULL || buffer == NULL || buffer_size == NULL)
+                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+
         /* Allocate temporary buffers */
         uint8_t* derBuffer = (uint8_t*) malloc(LARGE_TEMP_SZ);
         size_t derSize = LARGE_TEMP_SZ;
@@ -354,140 +363,3 @@ void signingRequest_free(SigningRequest* request)
                 free(request);
         }
 }
-
-
-// int genAltCertInfo(AltKeyData* altKeyData, PrivateKey* issuerAltKey, PrivateKey* ownAltKey)
-// {
-//         int ret = 0;
-
-//         if (ownAltKey->init == true)
-//         {
-//                 /* Export the alternatvie public key for placement in the new certificate */
-//                 if (ownAltKey->type == RSAk)
-//                 {
-//                         /* Get output size */
-//                         ret = wc_RsaKeyToPublicDer(&ownAltKey->key.rsa, NULL, 0);
-//                         if (ret <= 0)
-//                                 ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
-
-//                         /* Allocate buffer */
-//                         altKeyData->pubKeyBuffer = (uint8_t*) malloc(ret);
-//                         altKeyData->pubKeySize = ret;
-//                         if (altKeyData->pubKeyBuffer == NULL)
-//                                 ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
-
-//                         /* Export public key */
-//                         ret = wc_RsaKeyToPublicDer(&ownAltKey->key.rsa, altKeyData->pubKeyBuffer,
-//                                                    (word32)altKeyData->pubKeySize);
-//                 }
-//                 else if (ownAltKey->type == ECDSAk)
-//                 {
-//                         /* Get output size */
-//                         ret = wc_EccPublicKeyToDer(&ownAltKey->key.ecc, NULL, 0, 1);
-//                         if (ret <= 0)
-//                                 ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
-
-//                         /* Allocate buffer */
-//                         altKeyData->pubKeyBuffer = (uint8_t*) malloc(ret);
-//                         altKeyData->pubKeySize = ret;
-//                         if (altKeyData->pubKeyBuffer == NULL)
-//                                 ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
-
-//                         /* Export public key */
-//                         ret = wc_EccPublicKeyToDer(&ownAltKey->key.ecc, altKeyData->pubKeyBuffer,
-//                                                    (word32)altKeyData->pubKeySize, 1);
-//                 }
-//                 else if ((ownAltKey->type == DILITHIUM_LEVEL2k) || (ownAltKey->type == DILITHIUM_LEVEL3k) ||
-//                         (ownAltKey->type == DILITHIUM_LEVEL5k))
-//                 {
-//                         /* Get output size */
-//                         ret = wc_Dilithium_PublicKeyToDer(&ownAltKey->key.dilithium, NULL, 0, 1);
-//                         if (ret <= 0)
-//                                 ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
-
-//                         /* Allocate buffer */
-//                         altKeyData->pubKeyBuffer = (uint8_t*) malloc(ret);
-//                         altKeyData->pubKeySize = ret;
-//                         if (altKeyData->pubKeyBuffer == NULL)
-//                                 ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
-
-//                         /* Export public key */
-//                         ret = wc_Dilithium_PublicKeyToDer(&ownAltKey->key.dilithium, altKeyData->pubKeyBuffer,
-//                                                           (word32)altKeyData->pubKeySize, 1);
-//                 }
-//                 else if ((ownAltKey->type == FALCON_LEVEL1k) || (ownAltKey->type == FALCON_LEVEL5k))
-//                 {
-//                         /* Get output size */
-//                         ret = wc_Falcon_PublicKeyToDer(&ownAltKey->key.falcon, NULL, 0, 1);
-//                         if (ret <= 0)
-//                                 ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
-
-//                         /* Allocate buffer */
-//                         altKeyData->pubKeyBuffer = (uint8_t*) malloc(ret);
-//                         altKeyData->pubKeySize = ret;
-//                         if (altKeyData->pubKeyBuffer == NULL)
-//                                 ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
-
-//                         /* Export public key */
-//                         ret = wc_Falcon_PublicKeyToDer(&ownAltKey->key.falcon, altKeyData->pubKeyBuffer,
-//                                                        (word32)altKeyData->pubKeySize, 1);
-//                 }
-
-//                 if (ret < 0)
-//                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
-//         }
-//         else
-//         {
-//                 /* We don't generate a hybrid certificate. Hence, we don't have to store
-//                  * an alternative public key. */
-//                 altKeyData->pubKeyBuffer = NULL;
-//                 altKeyData->pubKeySize = 0;
-//         }
-
-//         if (issuerAltKey->init == true)
-//         {
-//                 altKeyData->sigAlgSize = sizeof(altKeyData->sigAlgBuffer);
-//                 memset(altKeyData->sigAlgBuffer, 0, sizeof(altKeyData->sigAlgBuffer));
-
-//                 /* Get OID of signature algorithm */
-//                 altKeyData->sigAlgOID = getSigAlgForKey(issuerAltKey);
-//                 if (altKeyData->sigAlgOID <= 0)
-//                         ERROR_OUT(altKeyData->sigAlgOID);
-
-//                 /* Get size of encoded signature algorithm */
-//                 altKeyData->sigAlgSize = SetAlgoID(altKeyData->sigAlgOID,
-//                                                    NULL, oidSigType, 0);
-//                 if (altKeyData->sigAlgSize <= 0)
-//                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
-
-//                 /* Allocate memory */
-//                 altKeyData->sigAlgBuffer = (uint8_t*) malloc(altKeyData->sigAlgSize);
-//                 if (altKeyData->sigAlgBuffer == NULL)
-//                         ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
-
-//                 /* Encode signature algorithm */
-//                 altKeyData->sigAlgSize = SetAlgoID(altKeyData->sigAlgOID,
-//                                                 altKeyData->sigAlgBuffer,
-//                                                 oidSigType, 0);
-//                 if (altKeyData->sigAlgSize <= 0)
-//                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
-//         }
-//         else
-//         {
-//                 /* We don't generate a hybrid certificate. Hence, we don't have to store
-//                  * an alternative signature algorithm. */
-//                 altKeyData->sigAlgBuffer = NULL;
-//                 altKeyData->sigAlgSize = 0;
-//         }
-
-//         return KRITIS3M_PKI_SUCCESS;
-
-// cleanup:
-//         if (altKeyData->pubKeyBuffer != NULL)
-//                 free(altKeyData->pubKeyBuffer);
-
-//         if (altKeyData->sigAlgBuffer != NULL)
-//                 free(altKeyData->sigAlgBuffer);
-
-//         return ret;
-// }

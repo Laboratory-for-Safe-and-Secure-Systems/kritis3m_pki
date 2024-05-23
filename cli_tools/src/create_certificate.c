@@ -92,6 +92,12 @@ int main(int argc, char** argv)
         OutputCert* outputCert = NULL;
 
         /* Parse CLI args */
+        if (argc < 2)
+        {
+                print_help(argv[0]);
+                ERROR_OUT("no arguments provided\n");
+        }
+
         while (true)
         {
                 int result = getopt_long(argc, argv, "a:b:c:d:e:f:gi:j:k:l:m:h", cli_options, &index);
@@ -147,32 +153,6 @@ int main(int argc, char** argv)
                                 exit(-1);
                 }
         }
-
-        /* Check if all required arguments are present */
-        // if ((issuerKeyPath == NULL) || (ownKeyPath == NULL) || (outputFilePath == NULL) || (commonName == NULL))
-        // {
-        //         fprintf(stderr, "missing required arguments\n");
-        //         print_help(argv[0]);
-        //         exit(-1);
-        // }
-
-        /* Further sanity check arguments */
-        // if (strcmp(issuerKeyPath, ownKeyPath) != 0 && issuerCertPath == NULL)
-        // {
-        //         fprintf(stderr, "we need the issuer certificate to derive a cert from it\n");
-        //         print_help(argv[0]);
-        //         exit(-1);
-        // }
-        // else if (strcmp(issuerKeyPath, ownKeyPath) == 0)
-        // {
-        //         if ((issuerAltKeyPath != NULL && ownAltKeyPath == NULL) ||
-        //                 (issuerAltKeyPath == NULL && ownAltKeyPath != NULL))
-        //         {
-        //                 fprintf(stderr, "we need the alternative key for both issuerAltKey and ownAltKey to generate a hybrid self-signed certificate\n");
-        //                 print_help(argv[0]);
-        //                 exit(-1);
-        //         }
-        // }
 
         /* Create a buffer to read the file contents */
         static const size_t bufferSize = 32 * 1024;
@@ -339,9 +319,9 @@ int main(int argc, char** argv)
                 ret = writeFile(certOutputFilePath, buffer, bytesInBuffer);
                 if (ret < 0)
                         ERROR_OUT("unable to write output cert to %s\n", certOutputFilePath);
-                if (ret == 0)
-                        printf("SUCCESS!\n\n");
         }
+
+        ret = KRITIS3M_PKI_SUCCESS;
 
 exit:
         privateKey_free(issuerKey);
@@ -352,9 +332,6 @@ exit:
         signingRequest_free(request);
 
         outputCert_free(outputCert);
-
-        if (ret != 0)
-                printf("Failure code was %d\n", ret);
 
         return ret;
 }

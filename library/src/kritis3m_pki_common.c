@@ -17,7 +17,7 @@ PrivateKey* privateKey_new(void)
 
 
 /* Internal helper method */
-int parsePemFile(uint8_t const* buffer, size_t buffer_size, SinglePrivateKey* key, EncryptedInfo* info)
+static int parsePemFile(uint8_t const* buffer, size_t buffer_size, SinglePrivateKey* key, EncryptedInfo* info)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
         word32 index = 0;
@@ -132,6 +132,9 @@ int privateKey_loadKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size_t 
         int ret = KRITIS3M_PKI_SUCCESS;
         EncryptedInfo info;
 
+        if (key == NULL || buffer == NULL)
+                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+
         memset(&info, 0, sizeof(EncryptedInfo));
 
         /* Parse primary key */
@@ -160,11 +163,15 @@ int privateKey_loadAltKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size
         int ret = KRITIS3M_PKI_SUCCESS;
         EncryptedInfo info;
 
+        if (key == NULL || buffer == NULL)
+                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+
         memset(&info, 0, sizeof(EncryptedInfo));
 
         /* Parse alternative key */
         ret = parsePemFile(buffer, buffer_size, &key->alternativeKey, &info);
 
+cleanup:
         return ret;
 }
 
@@ -173,6 +180,9 @@ int privateKey_loadAltKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size
 int getSigAlgForKey(SinglePrivateKey* key)
 {
         int sigAlg = 0;
+
+        if (key == NULL || !key->init)
+                return KRITIS3M_PKI_KEY_ERROR;
 
         switch (key->type)
         {
@@ -223,7 +233,7 @@ int getSigAlgForKey(SinglePrivateKey* key)
 
 void freeSinglePrivateKey(SinglePrivateKey* key)
 {
-        if (key->init)
+        if (key != NULL && key->init)
         {
                 switch (key->type)
                 {

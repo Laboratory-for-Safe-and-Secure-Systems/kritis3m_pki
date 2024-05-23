@@ -32,6 +32,9 @@ int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t bu
         DerBuffer* der = NULL;
         EncryptedInfo info;
 
+        if (cert == NULL || buffer == NULL)
+                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+
         memset(&info, 0, sizeof(EncryptedInfo));
 
         /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer object. */
@@ -106,6 +109,9 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
         DerBuffer* der = NULL;
         DecodedCert decodedCert;
         bool decodedCertInit = false;
+
+        if (outputCert == NULL || buffer == NULL)
+                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
 
         /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer object. */
         ret = wc_PemToDer(buffer, buffer_size, CERTREQ_TYPE, &der, NULL, NULL, NULL);
@@ -281,6 +287,9 @@ int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert, Pri
 {
         int ret = KRITIS3M_PKI_SUCCESS;
 
+        if (outputCert == NULL || issuerKey == NULL)
+                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+
         /* Set primary signature type */
         outputCert->cert.sigType = getSigAlgForKey(&issuerKey->primaryKey);
         if (outputCert->cert.sigType <= 0)
@@ -323,7 +332,7 @@ int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert, Pri
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_CERT_ERROR);
 
-        if (issuerCert->init)
+        if (issuerCert != NULL && issuerCert->init)
         {
                 /* Set the issuer */
                 ret = wc_SetIssuerBuffer(&outputCert->cert, issuerCert->buffer, issuerCert->size);
@@ -356,13 +365,17 @@ cleanup:
  */
 void outputCert_setValidity(OutputCert* outputCert, int days)
 {
-        outputCert->cert.daysValid = days;
+        if (outputCert != NULL)
+                outputCert->cert.daysValid = days;
 }
 
 
 /* Configure the new OutputCert to be a CA certificate, capable of signing new certificates. */
 int outputCert_configureAsCA(OutputCert* outputCert)
 {
+        if (outputCert == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
         outputCert->cert.isCA = 1;
 
         /* Limit key usage to only sign new certificates */
@@ -377,6 +390,9 @@ int outputCert_configureAsCA(OutputCert* outputCert)
 /* Configure the new OutputCert to be an entity certificate for authentication. */
 int outputCert_configureAsEntity(OutputCert* outputCert)
 {
+        if (outputCert == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
         outputCert->cert.isCA = 0;
 
         /* Limit key usage to only sign messages in TLS handshake */
@@ -405,6 +421,9 @@ int outputCert_finalize(OutputCert* outputCert, PrivateKey* issuerKey, uint8_t* 
         WC_RNG rng;
         DecodedCert decodedCert;
         bool decodedCertInit = false;
+
+        if (outputCert == NULL || issuerKey == NULL || buffer == NULL || buffer_size == NULL)
+                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
 
         /* Allocate temporary buffers */
         uint8_t* derBuffer = (uint8_t*) malloc(LARGE_TEMP_SZ);
