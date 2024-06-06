@@ -29,16 +29,16 @@ SigningRequest* signingRequest_new(void)
 }
 
 
-/* Initialize the SigningRequest with given subject data and altName.
+/* Initialize the SigningRequest with given metadata.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int signingRequest_init(SigningRequest* request, char const* CN, char const* altName)
+int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* metadata)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
         DNS_entry* altNameEncoded = NULL;
 
-        if (request == NULL || CN == NULL)
+        if (request == NULL || metadata == NULL)
                 ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
 
         /* Initialize the certificate request structure */
@@ -47,22 +47,33 @@ int signingRequest_init(SigningRequest* request, char const* CN, char const* alt
                 ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
 
         /* Set metadata */
-        strncpy(request->req.subject.commonName, CN, CTC_NAME_SIZE);
+        if (metadata->CN != NULL)
+                strncpy(request->req.subject.commonName, metadata->CN, CTC_NAME_SIZE);
+        else
+                strncpy(request->req.subject.commonName, "KRITIS3M PKI Cert", CTC_NAME_SIZE);
+
         strncpy(request->req.subject.country, SUBJECT_COUNTRY, CTC_NAME_SIZE);
         // strncpy(request->req.subject.state, SUBJECT_STATE, CTC_NAME_SIZE);
         // strncpy(request->req.subject.locality, SUBJECT_LOCALITY, CTC_NAME_SIZE);
-        strncpy(request->req.subject.org, SUBJECT_ORG, CTC_NAME_SIZE);
-        strncpy(request->req.subject.unit, SUBJECT_UNIT, CTC_NAME_SIZE);
+        if (metadata->O != NULL)
+                strncpy(request->req.subject.org, metadata->O, CTC_NAME_SIZE);
+        else
+                strncpy(request->req.subject.org, SUBJECT_ORG, CTC_NAME_SIZE);
+
+        if (metadata->OU != NULL)
+                strncpy(request->req.subject.unit, metadata->OU, CTC_NAME_SIZE);
+        else
+                strncpy(request->req.subject.unit, SUBJECT_UNIT, CTC_NAME_SIZE);
         // strncpy(request->req.subject.email, SUBJECT_EMAIL, CTC_NAME_SIZE);
 
         /* Allocate DNS Entry object. */
-        if (altName != NULL)
+        if (metadata->altName != NULL)
         {
                 altNameEncoded = AltNameNew(request->req.heap);
                 if (altNameEncoded == NULL)
                         ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
 
-                altNameEncoded->len = strlen(altName);
+                altNameEncoded->len = strlen(metadata->altName);
                 altNameEncoded->type = ASN_DNS_TYPE;
                 altNameEncoded->next = NULL;
 
@@ -78,7 +89,7 @@ int signingRequest_init(SigningRequest* request, char const* CN, char const* alt
                         altNameEncoded = NULL;
                         ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
                 }
-                strcpy(altNameEncoded->name, altName);
+                strcpy(altNameEncoded->name, metadata->altName);
 
                 /* Store the alt name encoded in the CSR. This uses WolfSSL internal API */
                 ret = FlattenAltNames(request->req.altNames, sizeof(request->req.altNames),

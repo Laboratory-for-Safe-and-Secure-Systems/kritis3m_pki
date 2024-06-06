@@ -7,6 +7,17 @@
 #include "kritis3m_pki_common.h"
 
 
+/* Structure for the metadata to be placed in the CSR */
+typedef struct
+{
+        char const* CN;
+        char const* O;
+        char const* OU;
+        char const* altName;
+}
+SigningRequestMetadata;
+
+
 /* Forward declarations of our data types.
  * The actual declarations are in the source file to hide
  * the internal dependencies. */
@@ -17,11 +28,11 @@ typedef struct signingRequest SigningRequest;
 SigningRequest* signingRequest_new(void);
 
 
-/* Initialize the SigningRequest with given subject data and altName.
+/* Initialize the SigningRequest with given metadata.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int signingRequest_init(SigningRequest* request, char const* CN, char const* altName);
+int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* metadata);
 
 
 /* Finalize the SigningRequest using the related private key. Store the final PEM encoded output

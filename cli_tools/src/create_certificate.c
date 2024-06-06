@@ -31,6 +31,8 @@ static const struct option cli_options[] =
         { "certOut",            required_argument, 0, 'f' },
         { "enableCA",           no_argument,       0, 'g' },
         { "CN",                 required_argument, 0, 'i' },
+        { "O",                  required_argument, 0, 'o' },
+        { "OU",                 required_argument, 0, 'p' },
         { "validity",           required_argument, 0, 'j' },
         { "altName",            required_argument, 0, 'k' },
         { "csrIn",              required_argument, 0, 'l' },
@@ -60,6 +62,8 @@ void print_help(char *prog_name)
 
         printf("\n  Options:\n");
         printf("  --CN <string>         Common Name (CN) for the certificate/CSR\n");
+        printf("  --O <string>          Organization (O) for the certificate/CSR\n");
+        printf("  --OU <string>         Organizational Unit (OU) for the certificate/CSR\n");
         printf("  --altName <string>    Alternative name (SAN) for the certificate/CSR (only one supported at the moment)\n");
         printf("  --validity <days>     Validity period in days (default: 365)\n");
         printf("  --enableCA            Create a CA certificate that can sign new certificates (deafault is entity cert/CSR)\n");
@@ -82,6 +86,8 @@ int main(int argc, char** argv)
 
         bool enableCA = false;
         char const* commonName = NULL;
+        char const* orgName = NULL;
+        char const* orgUnit = NULL;
         char const* altName = NULL;
         int validity = 365;
 
@@ -100,7 +106,7 @@ int main(int argc, char** argv)
 
         while (true)
         {
-                int result = getopt_long(argc, argv, "a:b:c:d:e:f:gi:j:k:l:m:h", cli_options, &index);
+                int result = getopt_long(argc, argv, "a:b:c:d:e:f:gi:j:k:l:m:o:p:h", cli_options, &index);
 
                 if (result == -1)
                         break; /* end of list */
@@ -130,6 +136,12 @@ int main(int argc, char** argv)
                                 break;
                         case 'i':
                                 commonName = optarg;
+                                break;
+                        case 'o':
+                                orgName = optarg;
+                                break;
+                        case 'p':
+                                orgUnit = optarg;
                                 break;
                         case 'j':
                                 validity = strtol(optarg, NULL, 10);
@@ -247,8 +259,15 @@ int main(int argc, char** argv)
                 /* We have to create a new CSR */
                 request = signingRequest_new();
 
+                SigningRequestMetadata metadata = {
+                        .CN = commonName,
+                        .O = orgName,
+                        .OU = orgUnit,
+                        .altName = altName
+                };
+
                 /* Create the CSR */
-                ret = signingRequest_init(request, commonName, altName);
+                ret = signingRequest_init(request, &metadata);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to create CSR: %d\n", ret);
 
