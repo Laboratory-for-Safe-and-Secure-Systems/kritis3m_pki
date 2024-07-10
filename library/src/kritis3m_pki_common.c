@@ -12,7 +12,84 @@ PrivateKey* privateKey_new(void)
         memset(&key->primaryKey, 0, sizeof(SinglePrivateKey));
         memset(&key->alternativeKey, 0, sizeof(SinglePrivateKey));
 
+        key->primaryKey.external.deviceId = INVALID_DEVID;
+        key->primaryKey.external.id = NULL;
+        key->alternativeKey.external.deviceId = INVALID_DEVID;
+        key->alternativeKey.external.id = NULL;
+
         return key;
+}
+
+
+/* Reference an external PrivateKey for secure element interaction. The ID is copied into the
+ * object.
+ * Must be called *before* generating a new key or loading the key from an existing buffer.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_setExternalRef(PrivateKey* key, int deviceId, uint8_t const* id, size_t size)
+{
+        if (key == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        if ((id != NULL) && (size > 0))
+        {
+                /* Free previous if present */
+                if (key->primaryKey.external.id != NULL)
+                {
+                        free(key->primaryKey.external.id);
+                }
+
+                /* Allocate memory */
+                key->primaryKey.external.id = (uint8_t*) malloc(size);
+                if (key->primaryKey.external.id == NULL)
+                        return KRITIS3M_PKI_MEMORY_ERROR;
+
+                /* Copy */
+                memcpy(key->primaryKey.external.id, id, size);
+                key->primaryKey.external.idSize = size;
+                key->primaryKey.external.deviceId = deviceId;
+        }
+        else
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        return privateKey_setAltExternalRef(key, deviceId, id, size);
+}
+
+
+/* Reference an external alternative PrivateKey for secure element interaction. The ID is copied
+ * into the object.
+ * Must be called *before* generating a new key or loading the key from an existing buffer.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_setAltExternalRef(PrivateKey* key, int deviceId, uint8_t const* id, size_t size)
+{
+        if (key == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        if ((id != NULL) && (size > 0))
+        {
+                /* Free previous if present */
+                if (key->alternativeKey.external.id != NULL)
+                {
+                        free(key->alternativeKey.external.id);
+                }
+
+                /* Allocate memory */
+                key->alternativeKey.external.id = (uint8_t*) malloc(size);
+                if (key->alternativeKey.external.id == NULL)
+                        return KRITIS3M_PKI_MEMORY_ERROR;
+
+                /* Copy */
+                memcpy(key->alternativeKey.external.id, id, size);
+                key->alternativeKey.external.idSize = size;
+                key->alternativeKey.external.deviceId = deviceId;
+        }
+        else
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        return KRITIS3M_PKI_SUCCESS;
 }
 
 
@@ -31,7 +108,8 @@ static int parsePemFile(uint8_t const* buffer, size_t buffer_size, SinglePrivate
         /* Decode the key and store it in our object */
         if (key->type == RSAk)
         {
-                ret = wc_InitRsaKey(&key->key.rsa, NULL);
+                ret = wc_InitRsaKey_Id(&key->key.rsa, key->external.id, key->external.idSize,
+                                       NULL, key->external.deviceId);
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
@@ -40,7 +118,8 @@ static int parsePemFile(uint8_t const* buffer, size_t buffer_size, SinglePrivate
         }
         else if (key->type == ECDSAk)
         {
-                ret = wc_ecc_init(&key->key.ecc);
+                ret = wc_ecc_init_id(&key->key.ecc, key->external.id, key->external.idSize,
+                                     NULL, key->external.deviceId);
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
@@ -50,7 +129,8 @@ static int parsePemFile(uint8_t const* buffer, size_t buffer_size, SinglePrivate
         else if ((key->type == DILITHIUM_LEVEL2k) || (key->type == DILITHIUM_LEVEL3k) ||
                 (key->type == DILITHIUM_LEVEL5k))
         {
-                wc_dilithium_init(&key->key.dilithium);
+                wc_dilithium_init_id(&key->key.dilithium, key->external.id, key->external.idSize,
+                                     NULL, key->external.deviceId);
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
@@ -79,7 +159,8 @@ static int parsePemFile(uint8_t const* buffer, size_t buffer_size, SinglePrivate
         }
         else if ((key->type == FALCON_LEVEL1k) || (key->type == FALCON_LEVEL5k))
         {
-                wc_falcon_init(&key->key.falcon);
+                wc_falcon_init_id(&key->key.falcon, key->external.id, key->external.idSize,
+                                  NULL, key->external.deviceId);
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
@@ -235,23 +316,32 @@ void freeSinglePrivateKey(SinglePrivateKey* key)
 {
         if (key != NULL && key->init)
         {
-                switch (key->type)
+                if (key->init)
                 {
-                case RSAk:
-                        wc_FreeRsaKey(&key->key.rsa);
-                        break;
-                case ECDSAk:
-                        wc_ecc_free(&key->key.ecc);
-                        break;
-                case DILITHIUM_LEVEL2k:
-                case DILITHIUM_LEVEL3k:
-                case DILITHIUM_LEVEL5k:
-                        wc_dilithium_free(&key->key.dilithium);
-                        break;
-                case FALCON_LEVEL1k:
-                case FALCON_LEVEL5k:
-                        wc_falcon_free(&key->key.falcon);
-                        break;
+                        switch (key->type)
+                        {
+                        case RSAk:
+                                wc_FreeRsaKey(&key->key.rsa);
+                                break;
+                        case ECDSAk:
+                                wc_ecc_free(&key->key.ecc);
+                                break;
+                        case DILITHIUM_LEVEL2k:
+                        case DILITHIUM_LEVEL3k:
+                        case DILITHIUM_LEVEL5k:
+                                wc_dilithium_free(&key->key.dilithium);
+                                break;
+                        case FALCON_LEVEL1k:
+                        case FALCON_LEVEL5k:
+                                wc_falcon_free(&key->key.falcon);
+                                break;
+                        }
+                }
+
+                if (key->external.id != NULL)
+                {
+                        free(key->external.id);
+                        key->external.id = NULL;
                 }
         }
 }

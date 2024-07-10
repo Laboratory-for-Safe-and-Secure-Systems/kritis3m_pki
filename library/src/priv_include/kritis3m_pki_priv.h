@@ -35,8 +35,13 @@ typedef struct singlePrivateKey
                 RsaKey rsa;
                 dilithium_key dilithium;
                 falcon_key falcon;
-        }
-        key;
+        } key;
+        struct
+        {
+                int deviceId;
+                uint8_t* id;
+                size_t idSize;
+        } external;
 }
 SinglePrivateKey;
 

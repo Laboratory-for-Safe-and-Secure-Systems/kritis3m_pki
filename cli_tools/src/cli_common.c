@@ -16,10 +16,10 @@ int readFile(const char* filePath, uint8_t* buffer, size_t* bufferSize)
 
         /* Get length of file */
         fseek(file, 0, SEEK_END);
-        int fileSize = ftell(file);
+        long fileSize = ftell(file);
         rewind(file);
 
-        if (fileSize > *bufferSize)
+        if ((size_t)fileSize > *bufferSize)
         {
                 printf("file (%s) is too large for buffer\n", filePath);
                 fclose(file);
@@ -60,19 +60,19 @@ int writeFile(const char* filePath, uint8_t* buffer, size_t bufferSize)
         }
 
         /* Write buffer to file */
-        int bytesWriten = 0;
+        size_t bytesWriten = 0;
         uint8_t* ptr = buffer;
         while (bytesWriten < bufferSize)
         {
-                int writen = fwrite(ptr, sizeof(uint8_t), bufferSize - bytesWriten, file);
-                if (writen < 0)
+                int written = fwrite(ptr, sizeof(uint8_t), bufferSize - bytesWriten, file);
+                if (written < 0)
                 {
                         printf("unable to write file (%s)\n", filePath);
                         fclose(file);
                         return -1;
                 }
-                bytesWriten += writen;
-                ptr += writen;
+                bytesWriten += written;
+                ptr += written;
         }
 
         fclose(file);

@@ -35,6 +35,26 @@ enum KRITIS3M_PKI_ERROR_CODES {
 PrivateKey* privateKey_new(void);
 
 
+/* Reference an external PrivateKey for secure element interaction. The ID is copied into the
+ * object.
+ * Must be called *before* generating a new key or loading the key from an existing buffer.
+ * This method also sets the external ref data for the alternative key. However, the user
+ * can always overwrite this data by calling `privateKey_setAltExternalRef()`.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_setExternalRef(PrivateKey* key, int deviceId, uint8_t const* id, size_t size);
+
+
+/* Reference an external alternative PrivateKey for secure element interaction. The ID is copied
+ * into the object.
+ * Must be called *before* generating a new key or loading the key from an existing buffer.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_setAltExternalRef(PrivateKey* key, int deviceId, uint8_t const* id, size_t size);
+
+
 /* Initialize the given PrivateKey `key` using the PEM encoded data in the provided `buffer`
  * with `buffer_size` bytes. The key type is determined automatically. When the PEM file
  * contains both a primary and an alternative key, both are loaded. Otherwise, an alternative
