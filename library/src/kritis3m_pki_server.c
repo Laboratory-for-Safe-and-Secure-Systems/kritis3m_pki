@@ -2,7 +2,6 @@
 #include "kritis3m_pki_priv.h"
 
 
-#define LARGE_TEMP_SZ 12288
 #define TEMP_SZ 256
 
 

@@ -31,6 +31,10 @@ enum KRITIS3M_PKI_ERROR_CODES {
 };
 
 
+/* Print a human-readable error message for the provided error code. */
+char const* kritis3m_pki_error_message(int error_code);
+
+
 /* Create a new PrivateKey object */
 PrivateKey* privateKey_new(void);
 
@@ -72,6 +76,40 @@ int privateKey_loadKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size_t 
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
 int privateKey_loadAltKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size_t buffer_size);
+
+
+/* Generate a new public/private key pair for given `algorithm` and store the result in
+ * the `key` object.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_generateKey(PrivateKey* key, char const* algorithm);
+
+
+/* Generate a new public/private key pair for given `algorithm` and store the result in
+ * the `key` object as the alternative key.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_generateAltKey(PrivateKey* key, char const* algorithm);
+
+
+/* Convert the primary key in `key` to PEM and write the result into `buffer`. On function
+ * entry, `buffer_size` must contain the size of the provided output buffer. After successful
+ * completion, `buffer_size` will contain the size of the written output in the buffer.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_writeKeyToBuffer(PrivateKey* key, uint8_t* buffer, size_t* buffer_size);
+
+
+/* Convert the alternative key in `key` to PEM and write the result into `buffer`. On function
+ * entry, `buffer_size` must contain the size of the provided output buffer. After successful
+ * completion, `buffer_size` will contain the size of the written output in the buffer.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_writeAltKeyToBuffer(PrivateKey* key, uint8_t* buffer, size_t* buffer_size);
 
 
 /* Free the memory of given PrivateKey */

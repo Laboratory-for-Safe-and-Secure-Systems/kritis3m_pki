@@ -16,6 +16,8 @@
 #include "wolfssl/wolfcrypt/error-crypt.h"
 
 
+#define LARGE_TEMP_SZ 12288
+
 #define ERROR_OUT(error_code) { ret = error_code; goto cleanup; }
 
 #define SubjectAltPublicKeyInfoExtension "2.5.29.72"

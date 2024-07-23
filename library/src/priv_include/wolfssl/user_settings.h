@@ -11,20 +11,16 @@ extern "C" {
 #define WOLFSSL_TLS13
 #define WOLFSSL_USER_IO
 #define WOLF_CRYPTO_CB
-#define WOLF_CRYPTO_DEV
 #define WOLFSSL_KEY_GEN
+#define WOLFSSL_CERT_GEN
 #define WOLFSSL_CERT_REQ
-#define WOLFSSL_ALWAYS_VERIFY_CB
-#define HAVE_CRL_IO
+#define WOLFSSL_CERT_EXT
 #define HAVE_TLS_EXTENSIONS
 #define HAVE_SUPPORTED_CURVES
-#define HAVE_NULL_CIPHER
-#define HAVE_SECRET_CALLBACK
 #define HAVE_WOLF_BIGINT
 #define HAVE_PKCS11
 #define WOLFSSL_DUAL_ALG_CERTS
 #define WOLFSSL_ASN_TEMPLATE
-#define LARGE_STATIC_BUFFERS
 #define WOLFSSL_ALT_NAMES
 #define WC_CTC_MAX_ALT_SIZE 512
 #define WC_ENABLE_ASYM_KEY_EXPORT
@@ -63,7 +59,7 @@ extern "C" {
 #define HAVE_DILITHIUM
 #define WOLFSSL_WC_DILITHIUM
 #define HAVE_LIBOQS
-#define WOLFSSL_NO_SPHINCS
+
 
 #define NO_SHA
 #define NO_MD4
@@ -73,6 +69,7 @@ extern "C" {
 #define NO_DH
 #define NO_RC4
 #define NO_AES_192
+#define WOLFSSL_NO_SPHINCS
 
 
 /* Debugging */

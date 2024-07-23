@@ -2,6 +2,43 @@
 #include "kritis3m_pki_priv.h"
 
 
+/* Print a human-readable error message for the provided error code. */
+char const* kritis3m_pki_error_message(int error_code)
+{
+        switch (error_code)
+        {
+        case KRITIS3M_PKI_SUCCESS:
+                return "Success";
+        case KRITIS3M_PKI_MEMORY_ERROR:
+                return "Memory allocation error";
+        case KRITIS3M_PKI_ARGUMENT_ERROR:
+                return "Invalid argument";
+        case KRITIS3M_PKI_PEM_DECODE_ERROR:
+                return "PEM decode error";
+        case KRITIS3M_PKI_PEM_ENCODE_ERROR:
+                return "PEM encode error";
+        case KRITIS3M_PKI_KEY_ERROR:
+                return "Key error";
+        case KRITIS3M_PKI_KEY_UNSUPPORTED:
+                return "Unsupported key type";
+        case KRITIS3M_PKI_CSR_ERROR:
+                return "CSR error";
+        case KRITIS3M_PKI_CSR_EXT_ERROR:
+                return "CSR extension error";
+        case KRITIS3M_PKI_CSR_SIGN_ERROR:
+                return "CSR signing error";
+        case KRITIS3M_PKI_CERT_ERROR:
+                return "Certificate error";
+        case KRITIS3M_PKI_CERT_EXT_ERROR:
+                return "Certificate extension error";
+        case KRITIS3M_PKI_CERT_SIGN_ERROR:
+                return "Certificate signing error";
+        default:
+                return "Unknown error";
+        }
+}
+
+
 /* Create a new PrivateKey object */
 PrivateKey* privateKey_new(void)
 {
@@ -253,6 +290,268 @@ int privateKey_loadAltKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size
         ret = parsePemFile(buffer, buffer_size, &key->alternativeKey, &info);
 
 cleanup:
+        return ret;
+}
+
+
+/* Internal helper method to generate a single key pair for given algorithm. */
+int generateKey(SinglePrivateKey* key, char const* algorithm)
+{
+        int ret = KRITIS3M_PKI_SUCCESS;
+
+        if (key == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        /* Key generation needs an RNG */
+        WC_RNG rng;
+        ret = wc_InitRng(&rng);
+        if (ret != 0)
+                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+        /* Check which algorithm we need */
+        if (strncmp(algorithm, "rsa", 3) == 0)
+        {
+                ret = wc_InitRsaKey_Id(&key->key.rsa, key->external.id, key->external.idSize,
+                                       NULL, key->external.deviceId);
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                int size = 0;
+                if (strcmp(algorithm, "rsa2048") == 0)
+                        size = 2048;
+                else if (strcmp(algorithm, "rsa3072") == 0)
+                        size = 3072;
+                else if (strcmp(algorithm, "rsa4096") == 0)
+                        size = 4096;
+                else
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
+
+                key->type = RSAk;
+                key->certKeyType = RSA_TYPE;
+                ret = wc_MakeRsaKey(&key->key.rsa, size, 65537, &rng);
+        }
+        else if (strncmp(algorithm, "ecc", 3) == 0)
+        {
+                ret = wc_ecc_init_id(&key->key.ecc, key->external.id, key->external.idSize,
+                                     NULL, key->external.deviceId);
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                int size = 0;
+                int curve_id = 0;
+                if (strcmp(algorithm, "ecc256") == 0)
+                {
+                        size = 32;
+                        curve_id = ECC_SECP256R1;
+                }
+                else if (strcmp(algorithm, "ecc384") == 0)
+                {
+                        size = 48;
+                        curve_id = ECC_SECP384R1;
+                }
+                else if (strcmp(algorithm, "ecc521") == 0)
+                {
+                        size = 66;
+                        curve_id = ECC_SECP521R1;
+                }
+                else
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
+
+                key->type = ECDSAk;
+                key->certKeyType = ECC_TYPE;
+                ret = wc_ecc_make_key_ex(&rng, size, &key->key.ecc, curve_id);
+        }
+        else if (strncmp(algorithm, "mldsa", 5) == 0)
+        {
+                wc_dilithium_init_id(&key->key.dilithium, key->external.id, key->external.idSize,
+                                     NULL, key->external.deviceId);
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                if (strcmp(algorithm, "mldsa44") == 0)
+                {
+                        key->type = DILITHIUM_LEVEL2k;
+                        key->certKeyType = DILITHIUM_LEVEL2_TYPE;
+                        ret = wc_dilithium_set_level(&key->key.dilithium, 2);
+                }
+                else if (strcmp(algorithm, "mldsa65") == 0)
+                {
+                        key->type = DILITHIUM_LEVEL3k;
+                        key->certKeyType = DILITHIUM_LEVEL3_TYPE;
+                        ret = wc_dilithium_set_level(&key->key.dilithium, 3);
+                }
+                else if (strcmp(algorithm, "mldsa87") == 0)
+                {
+                        key->type = DILITHIUM_LEVEL5k;
+                        key->certKeyType = DILITHIUM_LEVEL5_TYPE;
+                        ret = wc_dilithium_set_level(&key->key.dilithium, 5);
+                }
+                else
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
+
+                ret = wc_dilithium_make_key(&key->key.dilithium, &rng);
+        }
+        else
+        {
+                ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
+        }
+
+        if (ret != 0)
+                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+        key->init = true;
+        ret = KRITIS3M_PKI_SUCCESS;
+
+cleanup:
+        wc_FreeRng(&rng);
+
+        return ret;
+}
+
+
+/* Generate a new public/private key pair for given `algorithm` and store the result in
+ * the `key` object.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_generateKey(PrivateKey* key, char const* algorithm)
+{
+        int ret = KRITIS3M_PKI_SUCCESS;
+
+        if ((key == NULL) || (algorithm == NULL))
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        /* Generate primary key */
+        ret = generateKey(&key->primaryKey, algorithm);
+
+        return ret;
+}
+
+
+/* Generate a new public/private key pair for given `algorithm` and store the result in
+ * the `key` object as the alternative key.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_generateAltKey(PrivateKey* key, char const* algorithm)
+{
+        int ret = KRITIS3M_PKI_SUCCESS;
+
+        if ((key == NULL) || (algorithm == NULL))
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        /* Generate primary key */
+        ret = generateKey(&key->alternativeKey, algorithm);
+
+        return ret;
+}
+
+
+/* Internal helper method to export a single private key */
+int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size)
+{
+        int ret = KRITIS3M_PKI_SUCCESS;
+
+        if (key->init == false)
+                return KRITIS3M_PKI_KEY_ERROR;
+
+        /* Allocate temporary buffers */
+        uint8_t* derBuffer = (uint8_t*) malloc(LARGE_TEMP_SZ);
+        size_t derSize = LARGE_TEMP_SZ;
+
+        if (derBuffer == NULL)
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+
+        if (key->type == RSAk)
+        {
+                /* Encode the key and store it in DER encoding */
+                ret = wc_RsaKeyToDer(&key->key.rsa, derBuffer, derSize);
+        }
+        else if (key->type == ECDSAk)
+        {
+                /* Encode the key and store it in DER encoding */
+                ret = wc_EccKeyToDer(&key->key.ecc, derBuffer, derSize);
+        }
+        else if ((key->type == DILITHIUM_LEVEL2k) ||
+                 (key->type == DILITHIUM_LEVEL3k) ||
+                 (key->type == DILITHIUM_LEVEL5k))
+        {
+                /* Encode the key and store it in DER encoding */
+                /* wc_Dilithium_KeyToDer() not working currently... */
+                // ret = wc_Dilithium_KeyToDer(&key->key.dilithium, derBuffer, derSize);
+                ret = wc_Dilithium_PrivateKeyToDer(&key->key.dilithium, derBuffer, derSize);
+        }
+        else if ((key->type == FALCON_LEVEL1k) ||
+                 (key->type == FALCON_LEVEL5k))
+        {
+                /* Encode the key and store it in DER encoding */
+                /* wc_Falcon_KeyToDer() not working currently... */
+                // ret = wc_Falcon_KeyToDer(&key->key.falcon, derBuffer, derSize);
+                ret = wc_Falcon_PrivateKeyToDer(&key->key.falcon, derBuffer, derSize);
+        }
+        else
+                ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
+
+        if (ret <= 0)
+                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+        derSize = ret;
+
+        /* Convert DER to PEM */
+        ret = wc_DerToPem(derBuffer, ret, buffer, *buffer_size, PKCS8_PRIVATEKEY_TYPE);
+        if (ret > 0)
+                *buffer_size = ret;
+        else
+                ERROR_OUT(KRITIS3M_PKI_PEM_ENCODE_ERROR);
+        // memcpy(buffer, derBuffer, derSize);
+        // *buffer_size = derSize;
+
+        ret = KRITIS3M_PKI_SUCCESS;
+
+cleanup:
+        if (derBuffer != NULL)
+                free(derBuffer);
+
+        return ret;
+}
+
+
+/* Convert the primary key in `key` to PEM and write the result into `buffer`. On function
+ * entry, `buffer_size` must contain the size of the provided output buffer. After successful
+ * completion, `buffer_size` will contain the size of the written output in the buffer.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_writeKeyToBuffer(PrivateKey* key, uint8_t* buffer, size_t* buffer_size)
+{
+        int ret = KRITIS3M_PKI_SUCCESS;
+
+        if (key == NULL || buffer == NULL || buffer_size == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        /* Export primary key */
+        ret = exportPrivateKey(&key->primaryKey, buffer, buffer_size);
+
+        return ret;
+}
+
+
+/* Convert the alternative key in `key` to PEM and write the result into `buffer`. On function
+ * entry, `buffer_size` must contain the size of the provided output buffer. After successful
+ * completion, `buffer_size` will contain the size of the written output in the buffer.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_writeAltKeyToBuffer(PrivateKey* key, uint8_t* buffer, size_t* buffer_size)
+{
+        int ret = KRITIS3M_PKI_SUCCESS;
+
+        if (key == NULL || buffer == NULL || buffer_size == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        /* Export alternative key */
+        ret = exportPrivateKey(&key->alternativeKey, buffer, buffer_size);
+
         return ret;
 }
 
