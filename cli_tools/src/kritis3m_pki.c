@@ -308,7 +308,7 @@ int main(int argc, char** argv)
         /* Load the issuer certificate */
         if (paths.issuerCertPath != NULL)
         {
-                LOG_INFO("Loading issuer cert from \"%s\"", paths.issuerKeyPath);
+                LOG_INFO("Loading issuer cert from \"%s\"", paths.issuerCertPath);
 
                 issuerCert = issuerCert_new();
                 if (issuerCert == NULL)
