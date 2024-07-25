@@ -10,6 +10,122 @@
 #define SUBJECT_EMAIL "las3@oth-regensburg.de"
 
 
+/* File global variable for the PKCS#11 token containing the entity key */
+static Pkcs11Token entityToken;
+static bool entityTokenInitialized = false;
+
+
+/* Initialize the PKCS#11 token for the entity key. Use the token found at `slot_id`.
+ * If `-1` is supplied as `slot_id`, the first found token is used automatically. The
+ * `pin` for the token is optional.
+ *
+ * Return value is the `device_id` for the initialized token in case of success
+ * (positive integer > 0), negative error code otherwise.
+ */
+int kritis3m_pki_init_entity_token(int slot_id, uint8_t const* pin, size_t pin_size)
+{
+        /* Initialize the token */
+        int ret = initPkcs11Token(&entityToken, slot_id, pin, pin_size, PKCS11_ENTITY_TOKEN_DEVICE_ID);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                return ret;
+
+        entityTokenInitialized = true;
+
+        return PKCS11_ENTITY_TOKEN_DEVICE_ID;
+}
+
+
+/* Import the PrivateKey object 'key' into an external reference.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int kritis3m_pki_entity_token_import_key(PrivateKey* key)
+{
+        int ret = KRITIS3M_PKI_SUCCESS;
+
+        if ((key == NULL) || (key->primaryKey.init == false))
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        if (entityTokenInitialized == false)
+                return KRITIS3M_PKI_PKCS11_ERROR;
+
+        /* Determine primary key type */
+        int type = -1;
+        switch (key->primaryKey.type)
+        {
+                case RSAk:
+                        type = PKCS11_KEY_TYPE_RSA;
+                        break;
+                case ECDSAk:
+                        type = PKCS11_KEY_TYPE_EC;
+                        break;
+                case DILITHIUM_LEVEL2k:
+                case DILITHIUM_LEVEL3k:
+                case DILITHIUM_LEVEL5k:
+                        type = PKCS11_KEY_TYPE_DILITHIUM;
+                        break;
+                case FALCON_LEVEL1k:
+                case FALCON_LEVEL5k:
+                        type = PKCS11_KEY_TYPE_FALCON;
+                        break;
+                default:
+                        return KRITIS3M_PKI_KEY_UNSUPPORTED;
+        }
+
+        /* Import the primary key */
+        ret = wc_Pkcs11StoreKey_ex(&entityToken, type, 0, &key->primaryKey.key, 1);
+        if (ret != 0)
+                return KRITIS3M_PKI_PKCS11_ERROR;
+
+        /* Import the alternative key */
+        if (key->alternativeKey.init == true)
+        {
+               /* Determine alternative key type */
+                int type = -1;
+                switch (key->alternativeKey.type)
+                {
+                        case RSAk:
+                                type = PKCS11_KEY_TYPE_RSA;
+                                break;
+                        case ECDSAk:
+                                type = PKCS11_KEY_TYPE_EC;
+                                break;
+                        case DILITHIUM_LEVEL2k:
+                        case DILITHIUM_LEVEL3k:
+                        case DILITHIUM_LEVEL5k:
+                                type = PKCS11_KEY_TYPE_DILITHIUM;
+                                break;
+                        case FALCON_LEVEL1k:
+                        case FALCON_LEVEL5k:
+                                type = PKCS11_KEY_TYPE_FALCON;
+                                break;
+                        default:
+                                return KRITIS3M_PKI_KEY_UNSUPPORTED;
+                }
+
+                /* Import the primary key */
+                ret = wc_Pkcs11StoreKey_ex(&entityToken, type, 0, &key->alternativeKey.key, 1);
+                if (ret != 0)
+                        return KRITIS3M_PKI_PKCS11_ERROR;
+        }
+
+        return KRITIS3M_PKI_SUCCESS;
+}
+
+
+/* Close the PKCS#11 token for the entity key. */
+int kritis3m_pki_close_entity_token(void)
+{
+        if (entityTokenInitialized == true)
+        {
+                wc_Pkcs11Token_Final(&entityToken);
+                entityTokenInitialized = false;
+        }
+
+        return KRITIS3M_PKI_SUCCESS;
+}
+
+
 /* Create a new SigningRequest object. */
 SigningRequest* signingRequest_new(void)
 {

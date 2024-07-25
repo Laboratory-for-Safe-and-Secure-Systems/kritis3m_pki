@@ -14,16 +14,30 @@ typedef struct issuerCert IssuerCert;
 typedef struct outputCert OutputCert;
 
 
+/* Initialize the PKCS#11 token for the issuer key. Use the token found at `slot_id`.
+ * If `-1` is supplied as `slot_id`, the first found token is used automatically. The
+ * `pin` for the token is optional.
+ *
+ * Return value is the `device_id` for the initialized token in case of success
+ * (positive integer > 0), negative error code otherwise.
+ */
+int kritis3m_pki_init_issuer_token(int slot_id, uint8_t const* pin, size_t pin_size);
+
+
+/* Close the PKCS#11 token for the issuer key. */
+int kritis3m_pki_close_issuer_token(void);
+
+
 /* Create a new IssuerCert object. */
 IssuerCert* issuerCert_new(void);
 
 
 /* Initialize the given IssuerCert `cert` using the PEM encoded data in the provided `buffer`
- * with `buffer_size` bytes.
+ * with `buffer_size` bytes. Check if it is compatible with the provided issuer private key.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t buffer_size);
+int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t buffer_size, PrivateKey* issuerKey);
 
 
 /* Free the memory of given IssuerCert */

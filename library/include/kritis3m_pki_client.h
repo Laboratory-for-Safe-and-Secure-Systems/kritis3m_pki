@@ -24,6 +24,27 @@ SigningRequestMetadata;
 typedef struct signingRequest SigningRequest;
 
 
+/* Initialize the PKCS#11 token for the entity key. Use the token found at `slot_id`.
+ * If `-1` is supplied as `slot_id`, the first found token is used automatically. The
+ * `pin` for the token is optional.
+ *
+ * Return value is the `device_id` for the initialized token in case of success
+ * (positive integer > 0), negative error code otherwise.
+ */
+int kritis3m_pki_init_entity_token(int slot_id, uint8_t const* pin, size_t pin_size);
+
+
+/* Import the PrivateKey object 'key' into an external reference.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int kritis3m_pki_entity_token_import_key(PrivateKey* key);
+
+
+/* Close the PKCS#11 token for the entity key. */
+int kritis3m_pki_close_entity_token(void);
+
+
 /* Create a new SigningRequest object. */
 SigningRequest* signingRequest_new(void);
 

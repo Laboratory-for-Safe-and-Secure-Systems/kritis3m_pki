@@ -5,6 +5,44 @@
 #define TEMP_SZ 256
 
 
+/* File global variable for the PKCS#11 token containing the issuer key */
+static Pkcs11Token issuerToken;
+static bool issuerTokenInitialized = false;
+
+
+/* Initialize the PKCS#11 token for the issuer key. Use the token found at `slot_id`.
+ * If `-1` is supplied as `slot_id`, the first found token is used automatically. The
+ * `pin` for the token is optional.
+ *
+ * Return value is the `device_id` for the initialized token in case of success
+ * (positive integer > 0), negative error code otherwise.
+ */
+int kritis3m_pki_init_issuer_token(int slot_id, uint8_t const* pin, size_t pin_size)
+{
+        /* Initialize the token */
+        int ret = initPkcs11Token(&issuerToken, slot_id, pin, pin_size, PKCS11_ISSUER_TOKEN_DEVICE_ID);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                return ret;
+
+        issuerTokenInitialized = true;
+
+        return PKCS11_ISSUER_TOKEN_DEVICE_ID;
+}
+
+
+/* Close the PKCS#11 token for the issuer key. */
+int kritis3m_pki_close_issuer_token(void)
+{
+        if (issuerTokenInitialized == true)
+        {
+                wc_Pkcs11Token_Final(&issuerToken);
+                issuerTokenInitialized = false;
+        }
+
+        return KRITIS3M_PKI_SUCCESS;
+}
+
+
 /* Create a new IssuerCert object. */
 IssuerCert* issuerCert_new(void)
 {
@@ -21,15 +59,17 @@ IssuerCert* issuerCert_new(void)
 
 
 /* Initialize the given IssuerCert `cert` using the PEM encoded data in the provided `buffer`
- * with `buffer_size` bytes.
+ * with `buffer_size` bytes. Check if it is compatible with the provided issuer private key.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t buffer_size)
+int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t buffer_size, PrivateKey* issuerKey)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
         DerBuffer* der = NULL;
         EncryptedInfo info;
+        DecodedCert decodedCert;
+        bool decodedCertInit = false;
 
         if (cert == NULL || buffer == NULL)
                 ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
@@ -37,9 +77,71 @@ int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t bu
         memset(&info, 0, sizeof(EncryptedInfo));
 
         /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer object. */
-        ret = PemToDer(buffer, buffer_size, CERT_TYPE, &der, NULL, &info, NULL);
+        ret = wc_PemToDer(buffer, buffer_size, CERT_TYPE, &der, NULL, &info, NULL);
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_PEM_DECODE_ERROR);
+
+        /* Decode the parsed issuer cert */
+        wc_InitDecodedCert(&decodedCert, der->buffer, der->length, NULL);
+        ret = wc_ParseCert(&decodedCert, CERT_TYPE, NO_VERIFY, NULL);
+        decodedCertInit = true;
+        if (ret != 0)
+                ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
+
+        /* If the issuer key is not yet properly initialized, fill it with data from the issuer certificate.
+         * This is the case when using an external issuer key stored on a secure element. */
+        if (issuerKey->primaryKey.init == false)
+        {
+                /* Initialize the key */
+                initPrivateKey(&issuerKey->primaryKey, decodedCert.keyOID);
+
+                /* Import the public key */
+                word32 idx = 0;
+                if (decodedCert.keyOID == RSAk)
+                        ret = wc_RsaPublicKeyDecode(decodedCert.publicKey, &idx, &issuerKey->primaryKey.key.rsa, decodedCert.pubKeySize);
+                else if (decodedCert.keyOID == ECDSAk)
+                        ret = wc_EccPublicKeyDecode(decodedCert.publicKey, &idx, &issuerKey->primaryKey.key.ecc, decodedCert.pubKeySize);
+                else if ((decodedCert.keyOID == DILITHIUM_LEVEL2k) || (decodedCert.keyOID == DILITHIUM_LEVEL3k) ||
+                         (decodedCert.keyOID == DILITHIUM_LEVEL5k))
+                        ret = wc_Dilithium_PublicKeyDecode(decodedCert.publicKey, &idx, &issuerKey->primaryKey.key.dilithium,
+                                                           decodedCert.pubKeySize);
+                else if ((decodedCert.keyOID == FALCON_LEVEL1k) || (decodedCert.keyOID == FALCON_LEVEL5k))
+                        ret = wc_Falcon_PublicKeyDecode(decodedCert.publicKey, &idx, &issuerKey->primaryKey.key.falcon,
+                                                        decodedCert.pubKeySize);
+                else
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
+
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                issuerKey->primaryKey.init = true;
+        }
+        if ((decodedCert.extSapkiSet) && (issuerKey->alternativeKey.init == false))
+        {
+                /* Initialize the key */
+                initPrivateKey(&issuerKey->alternativeKey, decodedCert.sapkiOID);
+
+                /* Import the public key */
+                word32 idx = 0;
+                if (decodedCert.sapkiOID == RSAk)
+                        ret = wc_RsaPublicKeyDecode(decodedCert.sapkiDer, &idx, &issuerKey->alternativeKey.key.rsa, decodedCert.sapkiLen);
+                else if (decodedCert.sapkiOID == ECDSAk)
+                        ret = wc_EccPublicKeyDecode(decodedCert.sapkiDer, &idx, &issuerKey->alternativeKey.key.ecc, decodedCert.sapkiLen);
+                else if ((decodedCert.sapkiOID == DILITHIUM_LEVEL2k) || (decodedCert.sapkiOID == DILITHIUM_LEVEL3k) ||
+                         (decodedCert.sapkiOID == DILITHIUM_LEVEL5k))
+                        ret = wc_Dilithium_PublicKeyDecode(decodedCert.sapkiDer, &idx, &issuerKey->alternativeKey.key.dilithium,
+                                                           decodedCert.sapkiLen);
+                else if ((decodedCert.sapkiOID == FALCON_LEVEL1k) || (decodedCert.sapkiOID == FALCON_LEVEL5k))
+                        ret = wc_Falcon_PublicKeyDecode(decodedCert.sapkiDer, &idx, &issuerKey->alternativeKey.key.falcon,
+                                                        decodedCert.sapkiLen);
+                else
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
+
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                issuerKey->alternativeKey.init = true;
+        }
 
         /* Allocate buffer for the decoded certificate */
         cert->buffer = (uint8_t*) malloc(der->length);
@@ -57,6 +159,8 @@ int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t bu
 
 cleanup:
         FreeDer(&der);
+        if (decodedCertInit)
+                wc_FreeDecodedCert(&decodedCert);
 
         return ret;
 
@@ -273,8 +377,6 @@ cleanup:
 
         return ret;
 }
-
-
 
 
 /* Set issuer data of the new OutputCert `outputCert` using data from IssuerCert `issuerCert`

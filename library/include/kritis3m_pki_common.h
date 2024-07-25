@@ -28,6 +28,7 @@ enum KRITIS3M_PKI_ERROR_CODES {
         KRITIS3M_PKI_CERT_ERROR = -10,
         KRITIS3M_PKI_CERT_EXT_ERROR = -11,
         KRITIS3M_PKI_CERT_SIGN_ERROR = -12,
+        KRITIS3M_PKI_PKCS11_ERROR = -13,
 };
 
 
@@ -35,28 +36,35 @@ enum KRITIS3M_PKI_ERROR_CODES {
 char const* kritis3m_pki_error_message(int error_code);
 
 
+/* Initialize the PKCS#11 support with given middleware library.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int kritis3m_pki_init_pkcs11(char const* middleware_path);
+
+
 /* Create a new PrivateKey object */
 PrivateKey* privateKey_new(void);
 
 
-/* Reference an external PrivateKey for secure element interaction. The ID is copied into the
- * object.
+/* Reference an external PrivateKey for secure element interaction. The `label` is copied
+ * into the object.
  * Must be called *before* generating a new key or loading the key from an existing buffer.
  * This method also sets the external ref data for the alternative key. However, the user
  * can always overwrite this data by calling `privateKey_setAltExternalRef()`.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int privateKey_setExternalRef(PrivateKey* key, int deviceId, uint8_t const* id, size_t size);
+int privateKey_setExternalRef(PrivateKey* key, int deviceId, char const* label);
 
 
-/* Reference an external alternative PrivateKey for secure element interaction. The ID is copied
- * into the object.
+/* Reference an external alternative PrivateKey for secure element interaction. The `label`
+ * is copied into the object.
  * Must be called *before* generating a new key or loading the key from an existing buffer.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int privateKey_setAltExternalRef(PrivateKey* key, int deviceId, uint8_t const* id, size_t size);
+int privateKey_setAltExternalRef(PrivateKey* key, int deviceId, char const* label);
 
 
 /* Initialize the given PrivateKey `key` using the PEM encoded data in the provided `buffer`

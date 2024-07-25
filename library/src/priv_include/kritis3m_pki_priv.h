@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 #include "wolfssl/options.h"
+#include "wolfssl/ssl.h"
 #include "wolfssl/wolfcrypt/settings.h"
 #include "wolfssl/wolfcrypt/ecc.h"
 #include "wolfssl/wolfcrypt/rsa.h"
@@ -14,6 +15,7 @@
 #include "wolfssl/wolfcrypt/asn_public.h"
 #include "wolfssl/wolfcrypt/asn.h"
 #include "wolfssl/wolfcrypt/error-crypt.h"
+#include "wolfssl/wolfcrypt/wc_pkcs11.h"
 
 
 #define LARGE_TEMP_SZ 12288
@@ -23,6 +25,9 @@
 #define SubjectAltPublicKeyInfoExtension "2.5.29.72"
 #define AltSignatureAlgorithmExtension "2.5.29.73"
 #define AltSignatureValueExtension "2.5.29.74"
+
+#define PKCS11_ENTITY_TOKEN_DEVICE_ID 1
+#define PKCS11_ISSUER_TOKEN_DEVICE_ID 2
 
 
 /* Struct declarations (hidden from the public headers) */
@@ -41,8 +46,7 @@ typedef struct singlePrivateKey
         struct
         {
                 int deviceId;
-                uint8_t* id;
-                size_t idSize;
+                char* label;
         } external;
 }
 SinglePrivateKey;
@@ -84,5 +88,7 @@ struct outputCert
 /* Internal helper methods */
 int getSigAlgForKey(SinglePrivateKey* key);
 void freeSinglePrivateKey(SinglePrivateKey* key);
+int initPkcs11Token(Pkcs11Token* token, int slot_id, uint8_t const* pin, size_t pin_size, int device_id);
+int initPrivateKey(SinglePrivateKey* key, int type);
 
 #endif /* KRITIS3M_PKI_PRIV_H */
