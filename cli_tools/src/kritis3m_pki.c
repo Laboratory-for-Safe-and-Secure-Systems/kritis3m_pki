@@ -17,7 +17,7 @@
 LOG_MODULE_CREATE(kritis3m_pki);
 
 
-#define ERROR_OUT(...) { LOG_ERROR(__VA_ARGS__); ret = -1; goto exit; }
+#define ERROR_OUT(...) { LOG_ERROR(__VA_ARGS__); ret = 1; goto exit; }
 
 
 int main(int argc, char** argv)

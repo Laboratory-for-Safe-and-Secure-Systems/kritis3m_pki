@@ -14,7 +14,7 @@
 LOG_MODULE_CREATE(kritis3m_se_importer);
 
 
-#define ERROR_OUT(...) { LOG_ERROR(__VA_ARGS__); ret = -1; goto exit; }
+#define ERROR_OUT(...) { LOG_ERROR(__VA_ARGS__); ret = 1; goto exit; }
 
 
 static const struct option cli_options[] =
