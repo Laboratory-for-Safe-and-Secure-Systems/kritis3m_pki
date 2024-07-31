@@ -56,6 +56,7 @@ extern "C" {
 #define HAVE_AESGCM
 #define WOLFSSL_HAVE_KYBER
 #define WOLFSSL_WC_KYBER
+#define WOLFSSL_ML_KEM
 #define HAVE_DILITHIUM
 #define WOLFSSL_WC_DILITHIUM
 #define HAVE_LIBOQS
