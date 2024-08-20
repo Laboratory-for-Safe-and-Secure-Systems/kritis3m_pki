@@ -1,0 +1,9 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: @LIBRARY_NAME@
+Description: KRITIS3m PKI @LIBRARY_ROLE@ library
+Cflags: -I${includedir}/kritis3m_pki
+Libs: -L${libdir} -l@LIBRARY_NAME@
+

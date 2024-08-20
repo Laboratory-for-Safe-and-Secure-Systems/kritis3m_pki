@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
+
+include(GNUInstallDirs)
+include(FetchContent)
+set(FETCHCONTENT_QUIET FALSE)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
@@ -15,164 +19,176 @@ option(KRITIS3M_PKI_STANDALONE "Use standalone WolfSSL" ON)
 # Use an externally installed WolfSSL library. If disabled, WolfSSL will be built.
 option(KRITIS3M_PKI_EXTERNAL_WOLFSSL "Use external WolfSSL library" OFF)
 
+# Create a combined static library that includes all dependencies
+option(KRITIS3M_PKI_COMBINED_STATIC_LIB "Create a combined static library" OFF)
+
 
 if(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
-
-# Search for system-wide installed WolfSSL
-find_package(liboqs REQUIRED)
-find_package(wolfssl REQUIRED)
+        # Search for system-wide installed WolfSSL
+        find_package(liboqs REQUIRED)
+        find_package(wolfssl REQUIRED)
 
 else(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
+        # Pull in kritis3m_wolfssl as a dependency
+        FetchContent_Declare(kritis3m_wolfssl
+                GIT_REPOSITORY          git@github.com:Laboratory-for-Safe-and-Secure-Systems/kritis3m_wolfssl.git
+                GIT_TAG                 origin/main
+                GIT_PROGRESS            TRUE
+                USES_TERMINAL_DOWNLOAD  TRUE
+        )
 
-# External repositories we need
-include(FetchContent)
-Set(FETCHCONTENT_QUIET FALSE)
-FetchContent_Declare(kritis3m_wolfssl
-        GIT_REPOSITORY          git@github.com:Laboratory-for-Safe-and-Secure-Systems/kritis3m_wolfssl.git
-        GIT_TAG                 origin/main
-        GIT_PROGRESS            TRUE
-        USES_TERMINAL_DOWNLOAD  TRUE
-)
+        # Configuration
+        set(KRITIS3M_WOLFSSL_STANDALONE ${KRITIS3M_PKI_STANDALONE})
 
-# Configuration
-set(KRITIS3M_WOLFSSL_STANDALONE ${KRITIS3M_PKI_STANDALONE})
-
-# Actually add the external repositories to our project
-FetchContent_GetProperties(kritis3m_wolfssl)
-if(NOT kritis3m_wolfssl_POPULATED)
-        FetchContent_Populate(kritis3m_wolfssl)
-
-        if(KRITIS3M_PKI_STANDALONE)
-                add_subdirectory(${kritis3m_wolfssl_SOURCE_DIR} ${kritis3m_wolfssl_BINARY_DIR})
-        else()
-                add_subdirectory(${kritis3m_wolfssl_SOURCE_DIR} ${kritis3m_wolfssl_BINARY_DIR} EXCLUDE_FROM_ALL)
+        # Actually add the external repositories to our project
+        FetchContent_GetProperties(kritis3m_wolfssl)
+        if(NOT kritis3m_wolfssl_POPULATED)
+                FetchContent_Populate(kritis3m_wolfssl)
+                if(KRITIS3M_PKI_STANDALONE)
+                        add_subdirectory(${kritis3m_wolfssl_SOURCE_DIR} ${kritis3m_wolfssl_BINARY_DIR})
+                else()
+                        add_subdirectory(${kritis3m_wolfssl_SOURCE_DIR} ${kritis3m_wolfssl_BINARY_DIR} EXCLUDE_FROM_ALL)
+                endif()
         endif()
-endif()
-
 endif(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
-
 
 
 # Define the common library
-add_library(pki_common
+add_library(kritis3m_pki_common
         ${CMAKE_CURRENT_SOURCE_DIR}/src/kritis3m_pki_common.c
 )
-
-target_include_directories(pki_common PUBLIC
+target_include_directories(kritis3m_pki_common PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include/kritis3m_pki>
 )
-
-target_include_directories(pki_common PRIVATE
+target_include_directories(kritis3m_pki_common PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/priv_include
 )
-
-target_link_libraries(pki_common PUBLIC wolfssl)
+target_link_libraries(kritis3m_pki_common PRIVATE wolfssl)
 
 
 # Define the client library
-add_library(pki_client
+add_library(kritis3m_pki_client
         ${CMAKE_CURRENT_SOURCE_DIR}/src/kritis3m_pki_client.c
 )
-
-target_include_directories(pki_client PUBLIC
+target_include_directories(kritis3m_pki_client PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include/kritis3m_pki>
 )
-
-target_include_directories(pki_client PRIVATE
+target_include_directories(kritis3m_pki_client PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/priv_include
 )
-
-target_link_libraries(pki_client PUBLIC pki_common)
+target_link_libraries(kritis3m_pki_client PUBLIC kritis3m_pki_common)
 
 
 # Define the server library
-add_library(pki_server
+add_library(kritis3m_pki_server
         ${CMAKE_CURRENT_SOURCE_DIR}/src/kritis3m_pki_server.c
 )
-
-target_include_directories(pki_server PUBLIC
+target_include_directories(kritis3m_pki_server PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include/kritis3m_pki>
 )
-
-target_include_directories(pki_server PRIVATE
+target_include_directories(kritis3m_pki_server PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/priv_include
 )
+target_link_libraries(kritis3m_pki_server PUBLIC kritis3m_pki_common)
 
-target_link_libraries(pki_server PUBLIC pki_common)
+
+# Install library and header files
+install(TARGETS kritis3m_pki_common EXPORT kritis3m_pki_common-export DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS kritis3m_pki_server EXPORT kritis3m_pki_server-export DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS kritis3m_pki_client EXPORT kritis3m_pki_client-export DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/kritis3m_pki)
+
+# Install CMake configuration files so other CMake projects can find the libraries
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kritis3m_pki_server-config.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_server)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kritis3m_pki_client-config.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_client)
+
+install(EXPORT kritis3m_pki_common-export DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_common FILE kritis3m_pki_common-export.cmake)
+export(EXPORT kritis3m_pki_common-export FILE kritis3m_pki_common-export.cmake)
+
+install(EXPORT kritis3m_pki_server-export DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_server FILE kritis3m_pki_server-export.cmake)
+export(EXPORT kritis3m_pki_server-export FILE kritis3m_pki_server-export.cmake)
+
+install(EXPORT kritis3m_pki_client-export DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_client FILE kritis3m_pki_client-export.cmake)
+export(EXPORT kritis3m_pki_client-export FILE kritis3m_pki_client-export.cmake)
+
+# Generate pkg-config files
+set(LIBRARY_NAME "kritis3m_pki_server")
+set(LIBRARY_ROLE "server")
+configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kritis3m_pki.pc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/kritis3m_pki_server.pc
+        @ONLY
+)
+set(LIBRARY_NAME "kritis3m_pki_client")
+set(LIBRARY_ROLE "client")
+configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kritis3m_pki.pc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/kritis3m_pki_client.pc
+        @ONLY
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/kritis3m_pki_server.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/kritis3m_pki_client.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 
 # Create combined static libraries that include all dependencies for a PKI client or server
-if (NOT BUILD_SHARED_LIBS)
+if (NOT BUILD_SHARED_LIBS AND KRITIS3M_PKI_COMBINED_STATIC_LIB)
+        set(LIBNAME_SERVER "libkritis3m_pki_server_full.a")
+        set(LIBNAME_CLIENT "libkritis3m_pki_client_full.a")
+        set(WOLFSSL_TARGET_NAME "wolfssl")
+        set(LIBOQS_TARGET_NAME "oqs")
 
-set(LIBNAME_SERVER "libkritis3m_pki_server.a")
-set(LIBNAME_CLIENT "libkritis3m_pki_client.a")
+        # When using external WolfSSL, we need to use the imported targets
+        # which contain a CMake namespace prefix
+        if(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
+                set(WOLFSSL_TARGET_NAME "wolfssl::wolfssl")
+                set(LIBOQS_TARGET_NAME "OQS::oqs")
+        endif(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
 
-set(WOLFSSL_TARGET_NAME "wolfssl")
-set(LIBOQS_TARGET_NAME "oqs")
+        string(CONCAT create_combined_lib_script_common
+                "addlib $<TARGET_FILE:kritis3m_pki_common>\n"
+                "addlib $<TARGET_FILE:${WOLFSSL_TARGET_NAME}>\n"
+                "addlib $<TARGET_FILE:${LIBOQS_TARGET_NAME}>\n"
+                "save\nend\n"
+        )
 
-if(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
-        set(WOLFSSL_TARGET_NAME "wolfssl::wolfssl")
-        set(LIBOQS_TARGET_NAME "OQS::oqs")
-endif(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
+        string(CONCAT create_combined_lib_script_server
+                "create ${LIBNAME_SERVER}\n"
+                "addlib $<TARGET_FILE:kritis3m_pki_server>\n"
+                "${create_combined_lib_script_common}"
+        )
 
-set(create_combined_lib_script_common
-        "addlib $<TARGET_FILE:pki_common>\naddlib $<TARGET_FILE:${WOLFSSL_TARGET_NAME}>\naddlib $<TARGET_FILE:${LIBOQS_TARGET_NAME}>\nsave\nend\n"
-)
+        string(CONCAT create_combined_lib_script_client
+                "create ${LIBNAME_CLIENT}\n"
+                "addlib $<TARGET_FILE:kritis3m_pki_client>\n"
+                "${create_combined_lib_script_common}"
+        )
 
-set(create_combined_lib_script_server
-        "create ${LIBNAME_SERVER}\naddlib $<TARGET_FILE:pki_server>\n${create_combined_lib_script_common}"
-)
+        file(GENERATE OUTPUT
+                "${CMAKE_CURRENT_BINARY_DIR}/create_combined_lib_script_server.ar"
+                CONTENT ${create_combined_lib_script_server}
+                CONDITION 1
+        )
 
-set(create_combined_lib_script_client
-        "create ${LIBNAME_CLIENT}\naddlib $<TARGET_FILE:pki_client>\n${create_combined_lib_script_common}"
-)
+        file(GENERATE OUTPUT
+                "${CMAKE_CURRENT_BINARY_DIR}/create_combined_lib_script_client.ar"
+                CONTENT ${create_combined_lib_script_client}
+                CONDITION 1
+        )
 
-file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/create_combined_lib_script_server.ar"
-        CONTENT ${create_combined_lib_script_server}
-        CONDITION 1
-)
+        add_custom_command(TARGET kritis3m_pki_server POST_BUILD
+                COMMAND ${CMAKE_AR} -M < create_combined_lib_script_server.ar
+                COMMENT "Creating combined static library ${LIBNAME_SERVER}"
+        )
 
-file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/create_combined_lib_script_client.ar"
-        CONTENT ${create_combined_lib_script_client}
-        CONDITION 1
-)
+        add_custom_command(TARGET kritis3m_pki_client POST_BUILD
+                COMMAND ${CMAKE_AR} -M < create_combined_lib_script_client.ar
+                COMMENT "Creating combined static library ${LIBNAME_CLIENT}"
+        )
 
-add_custom_command(TARGET pki_server POST_BUILD
-        DEPENDS pki_common wolfssl oqs
-        COMMAND ${CMAKE_AR} -M < create_combined_lib_script_server.ar
-        COMMENT "Creating combined static library ${LIBNAME_SERVER}"
-)
-
-add_custom_command(TARGET pki_client POST_BUILD
-        DEPENDS pki_common wolfssl oqs
-        COMMAND ${CMAKE_AR} -M < create_combined_lib_script_client.ar
-        COMMENT "Creating combined static library ${LIBNAME_CLIENT}"
-)
-
-# Install the library files
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME_SERVER} TYPE LIB)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME_CLIENT} TYPE LIB)
-
-endif(NOT BUILD_SHARED_LIBS)
-
-
-# Install files
-install(TARGETS pki_common EXPORT kritis3m_pki_common-export DESTINATION lib)
-install(TARGETS pki_server EXPORT kritis3m_pki_server-export DESTINATION lib)
-install(TARGETS pki_client EXPORT kritis3m_pki_client-export DESTINATION lib)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION include/kritis3m_pki)
-
-# Install CMake configuration files
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kritis3m_pki_server-config.cmake DESTINATION lib/cmake/kritis3m_pki_server)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kritis3m_pki_client-config.cmake DESTINATION lib/cmake/kritis3m_pki_client)
-
-install(EXPORT kritis3m_pki_common-export DESTINATION lib/cmake/kritis3m_pki_common FILE kritis3m_pki_common-export.cmake)
-export(EXPORT kritis3m_pki_common-export FILE kritis3m_pki_server-common.cmake)
-
-install(EXPORT kritis3m_pki_server-export DESTINATION lib/cmake/kritis3m_pki_server FILE kritis3m_pki_server-export.cmake)
-export(EXPORT kritis3m_pki_server-export FILE kritis3m_pki_server-export.cmake)
-
-install(EXPORT kritis3m_pki_client-export DESTINATION lib/cmake/kritis3m_pki_client FILE kritis3m_pki_client-export.cmake)
-export(EXPORT kritis3m_pki_client-export FILE kritis3m_pki_client-export.cmake)
-
-
+        # Install the library files
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME_SERVER} TYPE LIB)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME_CLIENT} TYPE LIB)
+endif()
