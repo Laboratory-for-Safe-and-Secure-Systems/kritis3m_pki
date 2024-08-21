@@ -28,11 +28,11 @@ int main(int argc, char** argv)
         size_t bytesInBuffer = bufferSize;
         uint8_t* buffer = NULL;
 
-        application_config app_config;
-        pki_paths paths;
-        pki_keygen_algorithm keygen_algos;
-        pki_metadata metadata;
-        pki_secure_element secure_element;
+        application_config app_config = {0};
+        pki_paths paths = {0};
+        pki_keygen_algorithm keygen_algos = {0};
+        pki_metadata metadata = {0};
+        pki_secure_element secure_element = {0};
 
         PrivateKey* issuerKey = NULL;
         IssuerCert* issuerCert = NULL;
@@ -177,6 +177,13 @@ int main(int argc, char** argv)
                         ret = writeFile(paths.entityKeyOutputPath, buffer, bytesInBuffer, false);
                         if (ret < 0)
                                 ERROR_OUT("unable to write key to \"%s\"", paths.entityKeyOutputPath);
+                }
+                else
+                {
+                        if (paths.entityKeyPath == NULL)
+                        {
+                                ERROR_OUT("No key output path specified and no external key referenced. The new key is lost, aborting.");
+                        }
                 }
         }
         /* Check if we need an alternative key */
@@ -339,7 +346,9 @@ int main(int argc, char** argv)
                         .CN = metadata.commonName,
                         .O = metadata.orgName,
                         .OU = metadata.orgUnit,
-                        .altName = metadata.altName
+                        .altNamesDNS = metadata.altNamesDNS,
+                        .altNamesURI = metadata.altNamesURI,
+                        .altNamesIP = metadata.altNamesIP,
                 };
 
                 /* Create the CSR */

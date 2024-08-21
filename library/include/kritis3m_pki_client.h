@@ -13,7 +13,9 @@ typedef struct
         char const* CN;
         char const* O;
         char const* OU;
-        char const* altName;
+        char const* altNamesDNS;
+        char const* altNamesURI;
+        char const* altNamesIP;
 }
 SigningRequestMetadata;
 

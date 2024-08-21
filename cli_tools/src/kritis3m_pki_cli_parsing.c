@@ -14,29 +14,32 @@ LOG_MODULE_CREATE(cli_parsing);
 
 static const struct option cli_options[] =
 {
-        { "issuerKey",          required_argument, 0, 'a' },
-        { "issuerAltKey",       required_argument, 0, 'b' },
-        { "issuerCert",         required_argument, 0, 'c' },
-        { "entityKey",          required_argument, 0, 'd' },
-        { "entityAltKey",       required_argument, 0, 'e' },
-        { "certOut",            required_argument, 0, 'f' },
-        { "enableCA",           no_argument,       0, 'g' },
-        { "CN",                 required_argument, 0, 'i' },
-        { "O",                  required_argument, 0, 'o' },
-        { "OU",                 required_argument, 0, 'p' },
-        { "validity",           required_argument, 0, 'j' },
-        { "altName",            required_argument, 0, 'k' },
-        { "csrIn",              required_argument, 0, 'l' },
-        { "csrOut",             required_argument, 0, 'm' },
-        { "genKey",             required_argument, 0, 'n' },
-        { "genAltKey",          required_argument, 0, 'q' },
-        { "keyOut",             required_argument, 0, 'r' },
-        { "altKeyOut",          required_argument, 0, 's' },
-        { "middleware",         required_argument, 0, 't' },
-        { "slotIssuerKey",      required_argument, 0, 'u' },
-        { "slotEntityKey",      required_argument, 0, 'w' },
-        { "verbose",            no_argument,       0, 'v' },
-        { "help",               no_argument,       0, 'h' },
+        { "issuerKey",          required_argument, 0, 0x01 },
+        { "issuerAltKey",       required_argument, 0, 0x02 },
+        { "issuerCert",         required_argument, 0, 0x03 },
+        { "entityKey",          required_argument, 0, 0x04 },
+        { "entityAltKey",       required_argument, 0, 0x05 },
+        { "certOut",            required_argument, 0, 0x06 },
+        { "enableCA",           no_argument,       0, 0x07 },
+        { "CN",                 required_argument, 0, 0x08 },
+        { "O",                  required_argument, 0, 0x09 },
+        { "OU",                 required_argument, 0, 0x0A },
+        { "validity",           required_argument, 0, 0x0B },
+        { "altNamesDNS",        required_argument, 0, 0x0C },
+        { "altNamesURI",        required_argument, 0, 0x0D },
+        { "altNamesIP",         required_argument, 0, 0x0E },
+        { "csrIn",              required_argument, 0, 0x0F },
+        { "csrOut",             required_argument, 0, 0x10 },
+        { "genKey",             required_argument, 0, 0x11 },
+        { "genAltKey",          required_argument, 0, 0x12 },
+        { "keyOut",             required_argument, 0, 0x13 },
+        { "altKeyOut",          required_argument, 0, 0x14 },
+        { "middleware",         required_argument, 0, 0x15 },
+        { "slotIssuerKey",      required_argument, 0, 0x16 },
+        { "slotEntityKey",      required_argument, 0, 0x17 },
+        { "verbose",            no_argument,       0, 'v'  },
+        { "debug",              no_argument,       0, 'd'  },
+        { "help",               no_argument,       0, 'h'  },
         { NULL, 0, NULL, 0}
 };
 
@@ -72,79 +75,89 @@ int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_ke
         int index = 0;
         while (true)
         {
-                int result = getopt_long(argc, argv, "a:b:c:d:e:f:gi:j:k:l:m:o:p:n:q:r:s:t:u:w:vh", cli_options, &index);
+                int result = getopt_long(argc, argv, "vdh", cli_options, &index);
 
                 if (result == -1)
                         break; /* end of list */
 
                 switch (result)
                 {
-                        case 'a':
+                        case 0x01: /* issuerKey */
                                 paths->issuerKeyPath = optarg;
                                 break;
-                        case 'b':
+                        case 0x02: /* issuerAltKey */
                                 paths->issuerAltKeyPath = optarg;
                                 break;
-                        case 'c':
+                        case 0x03: /* issuerCert */
                                 paths->issuerCertPath = optarg;
                                 break;
-                        case 'd':
+                        case 0x04: /* entityKey */
                                 paths->entityKeyPath = optarg;
                                 break;
-                        case 'e':
+                        case 0x05: /* entityAltKey */
                                 paths->entityAltKeyPath = optarg;
                                 break;
-                        case 'f':
+                        case 0x06: /* certOut */
                                 paths->certOutputFilePath = optarg;
                                 break;
-                        case 'g':
+                        case 0x07: /* enableCA */
                                 metadata->enableCA = true;
                                 break;
-                        case 'i':
+                        case 0x08: /* CN */
                                 metadata->commonName = optarg;
                                 break;
-                        case 'o':
+                        case 0x09: /* O */
                                 metadata->orgName = optarg;
                                 break;
-                        case 'p':
+                        case 0x0A: /* OU */
                                 metadata->orgUnit = optarg;
                                 break;
-                        case 'j':
+                        case 0x0B: /* validity */
                                 metadata->validity = strtol(optarg, NULL, 10);
                                 break;
-                        case 'k':
-                                metadata->altName = optarg;
+                        case 0x0C: /* altNamesDNS */
+                                metadata->altNamesDNS = optarg;
                                 break;
-                        case 'l':
+                        case 0x0D: /* altNamesURI */
+                                metadata->altNamesURI = optarg;
+                                break;
+                        case 0x0E: /* altNamesIP */
+                                metadata->altNamesIP = optarg;
+                                break;
+                        case 0x0F: /* csrIn */
                                 paths->csrInputPath = optarg;
                                 break;
-                        case 'm':
+                        case 0x10: /* csrOut */
                                 paths->csrOutputFilePath = optarg;
                                 break;
-                        case 'n':
+                        case 0x11: /* genKey */
                                 keygen_algos->keyAlg = optarg;
                                 break;
-                        case 'q':
+                        case 0x12: /* genAltKey */
                                 keygen_algos->altKeyAlg = optarg;
                                 break;
-                        case 'r':
+                        case 0x13: /* keyOut */
                                 paths->entityKeyOutputPath = optarg;
                                 break;
-                        case 's':
+                        case 0x14: /* altKeyOut */
                                 paths->entityAltKeyOutputPath = optarg;
                                 break;
-                        case 't':
+                        case 0x15: /* middleware */
                                 secure_element->middlewarePath = optarg;
                                 break;
-                        case 'u':
+                        case 0x16: /* slotIssuerKey */
                                 secure_element->slotIssuerKey = strtol(optarg, NULL, 10);
                                 break;
-                        case 'w':
+                        case 0x17: /* slotEntityKey */
                                 secure_element->slotEntityKey = strtol(optarg, NULL, 10);
                                 break;
                         case 'v':
                                 app_config->log_level = LOG_LVL_INFO;
                                 LOG_LVL_SET(LOG_LVL_INFO);
+                                break;
+                        case 'd':
+                                app_config->log_level = LOG_LVL_DEBUG;
+                                LOG_LVL_SET(LOG_LVL_DEBUG);
                                 break;
                         case 'h':
                                 print_help(argv[0]);
@@ -188,7 +201,9 @@ static void set_defaults(application_config* app_config, pki_paths* paths, pki_k
         metadata->commonName = NULL;
         metadata->orgName = NULL;
         metadata->orgUnit = NULL;
-        metadata->altName = NULL;
+        metadata->altNamesDNS = NULL;
+        metadata->altNamesURI = NULL;
+        metadata->altNamesIP = NULL;
         metadata->validity = 365;
 
         /* Secure Element */
@@ -229,7 +244,9 @@ static void print_help(char const* name)
         printf("  --CN <string>           Common Name (CN) for the certificate/CSR\n");
         printf("  --O <string>            Organization (O) for the certificate/CSR\n");
         printf("  --OU <string>           Organizational Unit (OU) for the certificate/CSR\n");
-        printf("  --altName <string>      Alternative name (SAN) for the certificate/CSR (only one supported atm)\n");
+        printf("  --altNamesDNS <string>  SAN DNS entries for the certificate/CSR (separated by ; and wrappend in \")\n");
+        printf("  --altNamesURI <string>  SAN URI entries for the certificate/CSR (separated by ; and wrappend in \")\n");
+        printf("  --altNamesIP <string>   SAN IP address entries for the certificate/CSR (separated by ; and wrappend in \")\n");
         printf("  --validity <days>       Validity period in days (default: 365)\n");
         printf("  --enableCA              Create a cert that can sign new certs (deafault is entity cert/CSR)\n");
 

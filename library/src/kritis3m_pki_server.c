@@ -210,8 +210,8 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
         int ret = 0;
         int index = 0;
         DerBuffer* der = NULL;
-        DecodedCert decodedCert;
-        bool decodedCertInit = false;
+        DecodedCert decodedCsr;
+        bool decodedCsrInit = false;
 
         if (outputCert == NULL || buffer == NULL)
                 ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
@@ -222,44 +222,44 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 ERROR_OUT(KRITIS3M_PKI_PEM_DECODE_ERROR);
 
         /* Decode the parsed CSR to access its internal fields for the final certificate */
-        wc_InitDecodedCert(&decodedCert, der->buffer, der->length, NULL);
-        ret = wc_ParseCert(&decodedCert, CERTREQ_TYPE, VERIFY, NULL);
-        decodedCertInit = true;
+        wc_InitDecodedCert(&decodedCsr, der->buffer, der->length, NULL);
+        ret = wc_ParseCert(&decodedCsr, CERTREQ_TYPE, VERIFY, NULL);
+        decodedCsrInit = true;
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
 
         /* Decode the primary public key */
-        if (decodedCert.keyOID == RSAk)
+        if (decodedCsr.keyOID == RSAk)
         {
                 ret = wc_InitRsaKey(&outputCert->ownKey.key.rsa, NULL);
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
                 outputCert->ownKey.certKeyType = RSA_TYPE;
-                ret = wc_RsaPublicKeyDecode(decodedCert.publicKey, &index,
+                ret = wc_RsaPublicKeyDecode(decodedCsr.publicKey, &index,
                                             &outputCert->ownKey.key.rsa,
-                                            decodedCert.pubKeySize);
+                                            decodedCsr.pubKeySize);
         }
-        else if (decodedCert.keyOID == ECDSAk)
+        else if (decodedCsr.keyOID == ECDSAk)
         {
                 ret = wc_ecc_init(&outputCert->ownKey.key.ecc);
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
                 outputCert->ownKey.certKeyType = ECC_TYPE;
-                ret = wc_EccPublicKeyDecode(decodedCert.publicKey, &index,
+                ret = wc_EccPublicKeyDecode(decodedCsr.publicKey, &index,
                                             &outputCert->ownKey.key.ecc,
-                                            decodedCert.pubKeySize);
+                                            decodedCsr.pubKeySize);
         }
-        else if ((decodedCert.keyOID == DILITHIUM_LEVEL2k) ||
-                 (decodedCert.keyOID == DILITHIUM_LEVEL3k) ||
-                 (decodedCert.keyOID == DILITHIUM_LEVEL5k))
+        else if ((decodedCsr.keyOID == DILITHIUM_LEVEL2k) ||
+                 (decodedCsr.keyOID == DILITHIUM_LEVEL3k) ||
+                 (decodedCsr.keyOID == DILITHIUM_LEVEL5k))
         {
                 wc_dilithium_init(&outputCert->ownKey.key.dilithium);
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
-                switch (decodedCert.keyOID)
+                switch (decodedCsr.keyOID)
                 {
                 case DILITHIUM_LEVEL2k:
                         outputCert->ownKey.certKeyType = DILITHIUM_LEVEL2_TYPE;
@@ -279,16 +279,16 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 if (ret < 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
-                ret = wc_Dilithium_PublicKeyDecode(decodedCert.publicKey, &index,
-                                &outputCert->ownKey.key.dilithium, decodedCert.pubKeySize);
+                ret = wc_Dilithium_PublicKeyDecode(decodedCsr.publicKey, &index,
+                                &outputCert->ownKey.key.dilithium, decodedCsr.pubKeySize);
         }
-        else if ((decodedCert.keyOID == FALCON_LEVEL1k) || (decodedCert.keyOID == FALCON_LEVEL5k))
+        else if ((decodedCsr.keyOID == FALCON_LEVEL1k) || (decodedCsr.keyOID == FALCON_LEVEL5k))
         {
                 wc_falcon_init(&outputCert->ownKey.key.falcon);
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
-                switch (decodedCert.keyOID)
+                switch (decodedCsr.keyOID)
                 {
                 case FALCON_LEVEL1k:
                         outputCert->ownKey.certKeyType = FALCON_LEVEL1_TYPE;
@@ -304,8 +304,8 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 if (ret < 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
-                ret = wc_Falcon_PublicKeyDecode(decodedCert.publicKey, &index,
-                                &outputCert->ownKey.key.falcon, decodedCert.pubKeySize);
+                ret = wc_Falcon_PublicKeyDecode(decodedCsr.publicKey, &index,
+                                &outputCert->ownKey.key.falcon, decodedCsr.pubKeySize);
         }
         else
                 ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
@@ -315,31 +315,31 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
         wc_InitCert(&outputCert->cert);
 
         /* Copy the subject data */
-        if (decodedCert.subjectC)
-                strncpy(outputCert->cert.subject.country, decodedCert.subjectC, decodedCert.subjectCLen);
-        if (decodedCert.subjectST)
-                strncpy(outputCert->cert.subject.state, decodedCert.subjectST, decodedCert.subjectSTLen);
-        if (decodedCert.subjectL)
-                strncpy(outputCert->cert.subject.locality, decodedCert.subjectL, decodedCert.subjectLLen);
-        if (decodedCert.subjectO)
-                strncpy(outputCert->cert.subject.org, decodedCert.subjectO, decodedCert.subjectOLen);
-        if (decodedCert.subjectOU)
-                strncpy(outputCert->cert.subject.unit, decodedCert.subjectOU, decodedCert.subjectOULen);
-        if (decodedCert.subjectSN)
-                strncpy(outputCert->cert.subject.sur, decodedCert.subjectSN, decodedCert.subjectSNLen);
-        if (decodedCert.subjectSND)
-                strncpy(outputCert->cert.subject.serialDev, decodedCert.subjectSND, decodedCert.subjectSNDLen);
-        if (decodedCert.subjectCN)
-                strncpy(outputCert->cert.subject.commonName, decodedCert.subjectCN, decodedCert.subjectCNLen);
-        if (decodedCert.subjectEmail)
-                strncpy(outputCert->cert.subject.email, decodedCert.subjectEmail, decodedCert.subjectEmailLen);
+        if (decodedCsr.subjectC)
+                strncpy(outputCert->cert.subject.country, decodedCsr.subjectC, decodedCsr.subjectCLen);
+        if (decodedCsr.subjectST)
+                strncpy(outputCert->cert.subject.state, decodedCsr.subjectST, decodedCsr.subjectSTLen);
+        if (decodedCsr.subjectL)
+                strncpy(outputCert->cert.subject.locality, decodedCsr.subjectL, decodedCsr.subjectLLen);
+        if (decodedCsr.subjectO)
+                strncpy(outputCert->cert.subject.org, decodedCsr.subjectO, decodedCsr.subjectOLen);
+        if (decodedCsr.subjectOU)
+                strncpy(outputCert->cert.subject.unit, decodedCsr.subjectOU, decodedCsr.subjectOULen);
+        if (decodedCsr.subjectSN)
+                strncpy(outputCert->cert.subject.sur, decodedCsr.subjectSN, decodedCsr.subjectSNLen);
+        if (decodedCsr.subjectSND)
+                strncpy(outputCert->cert.subject.serialDev, decodedCsr.subjectSND, decodedCsr.subjectSNDLen);
+        if (decodedCsr.subjectCN)
+                strncpy(outputCert->cert.subject.commonName, decodedCsr.subjectCN, decodedCsr.subjectCNLen);
+        if (decodedCsr.subjectEmail)
+                strncpy(outputCert->cert.subject.email, decodedCsr.subjectEmail, decodedCsr.subjectEmailLen);
 
         /* Copy the altNames */
-        if (decodedCert.altNames)
+        if (decodedCsr.altNames)
         {
                 /* Copy the altNames from the CSR to the new certificate. This uses WolfSSL internal API */
                 ret = FlattenAltNames(outputCert->cert.altNames, sizeof(outputCert->cert.altNames),
-                                      decodedCert.altNames);
+                                      decodedCsr.altNames);
                 if (ret >= 0)
                 {
                         outputCert->cert.altNamesSz = ret;
@@ -349,21 +349,21 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
         }
 
         /* Copy the SubjectAltPublicKeyInfoExtension */
-        if (decodedCert.extSapkiSet && decodedCert.sapkiDer != NULL)
+        if (decodedCsr.extSapkiSet && decodedCsr.sapkiDer != NULL)
         {
                 /* Allocate buffer for the alternative public key */
-                outputCert->altPubKeyDer = (uint8_t*) malloc(decodedCert.sapkiLen);
+                outputCert->altPubKeyDer = (uint8_t*) malloc(decodedCsr.sapkiLen);
                 if (outputCert->altPubKeyDer == NULL)
                         ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
 
                 /* Copy the alternative public key */
-                memcpy(outputCert->altPubKeyDer, decodedCert.sapkiDer, decodedCert.sapkiLen);
+                memcpy(outputCert->altPubKeyDer, decodedCsr.sapkiDer, decodedCsr.sapkiLen);
 
                 /* Write the alternative public key as a non-critical extension */
                 ret = wc_SetCustomExtension(&outputCert->cert, 0,
                                             SubjectAltPublicKeyInfoExtension,
                                             outputCert->altPubKeyDer,
-                                            decodedCert.sapkiLen);
+                                            decodedCsr.sapkiLen);
                 if (ret < 0)
                         ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR);
         }
@@ -372,8 +372,8 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
 
 cleanup:
         wc_FreeDer(&der);
-        if (decodedCertInit)
-                wc_FreeDecodedCert(&decodedCert);
+        if (decodedCsrInit)
+                wc_FreeDecodedCert(&decodedCsr);
 
         return ret;
 }

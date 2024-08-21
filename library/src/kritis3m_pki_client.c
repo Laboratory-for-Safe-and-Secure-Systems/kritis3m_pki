@@ -1,6 +1,8 @@
 #include "kritis3m_pki_client.h"
 #include "kritis3m_pki_priv.h"
 
+#include <arpa/inet.h>
+
 
 #define SUBJECT_COUNTRY "DE"
 #define SUBJECT_STATE "Bayern"
@@ -143,6 +145,51 @@ SigningRequest* signingRequest_new(void)
 }
 
 
+static int addAltNameEntry(DNS_entry** altNameList, char const* altName, int altNameLen, int type)
+{
+        int ret = 0;
+        DNS_entry* newEntry = AltNameNew(NULL);
+        if (newEntry == NULL)
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+
+        newEntry->len = altNameLen;
+        newEntry->type = type;
+        newEntry->next = NULL; /* We put it at the end of the list */
+
+        /* Allocate DNS Entry name - length of string plus 1 for NULL. */
+        newEntry->name = (char*) XMALLOC((size_t)newEntry->len + 1,
+                                         NULL,
+                                         DYNAMIC_TYPE_ALTNAME);
+        if (newEntry->name == NULL)
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+
+        /* Copy alt name. We use memcpy() here instead of strcpy(), as altName may contain a
+         * binary representation of an ip address containing zeros. That would break strcpy().
+         */
+        memcpy(newEntry->name, altName, altNameLen);
+        newEntry->name[altNameLen] = '\0';
+
+        /* Add entry to the end of the list */
+        DNS_entry* current = *altNameList;
+        if (current == NULL)
+                *altNameList = newEntry;
+        else
+        {
+                while (current->next != NULL)
+                        current = current->next;
+
+                 current->next = newEntry;
+        }
+        newEntry = NULL;
+
+cleanup:
+        if (newEntry != NULL)
+                FreeAltNames(newEntry, NULL);
+
+        return ret;
+}
+
+
 /* Initialize the SigningRequest with given metadata.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
@@ -150,7 +197,7 @@ SigningRequest* signingRequest_new(void)
 int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* metadata)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
-        DNS_entry* altNameEncoded = NULL;
+        DNS_entry* altNames = NULL;
 
         if (request == NULL || metadata == NULL)
                 ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
@@ -180,34 +227,58 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
                 strncpy(request->req.subject.unit, SUBJECT_UNIT, CTC_NAME_SIZE);
         // strncpy(request->req.subject.email, SUBJECT_EMAIL, CTC_NAME_SIZE);
 
-        /* Allocate DNS Entry object. */
-        if (metadata->altName != NULL)
+        /* Allocate DNS alt name objects */
+        if (metadata->altNamesDNS != NULL)
         {
-                altNameEncoded = AltNameNew(request->req.heap);
-                if (altNameEncoded == NULL)
-                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
-
-                altNameEncoded->len = strlen(metadata->altName);
-                altNameEncoded->type = ASN_DNS_TYPE;
-                altNameEncoded->next = NULL;
-
-                /* Allocate DNS Entry name - length of string plus 1 for NUL. */
-                altNameEncoded->name = (char*) XMALLOC((size_t)altNameEncoded->len + 1,
-                                                request->req.heap,
-                                                DYNAMIC_TYPE_ALTNAME);
-                if (altNameEncoded->name == NULL)
+                char* altName = strtok((char*)metadata->altNamesDNS, ";");
+                while (altName != NULL)
                 {
-                        /* Manually free to prevent double free of altNameEncoded->name in
-                         * FreeAltNames(). */
-                        XFREE(altNameEncoded, request->req.heap, DYNAMIC_TYPE_ALTNAME);
-                        altNameEncoded = NULL;
-                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
-                }
-                strcpy(altNameEncoded->name, metadata->altName);
+                        ret = addAltNameEntry(&altNames, altName, strlen(altName), ASN_DNS_TYPE);
+                        if (ret < 0)
+                                ERROR_OUT(ret);
 
-                /* Store the alt name encoded in the CSR. This uses WolfSSL internal API */
-                ret = FlattenAltNames(request->req.altNames, sizeof(request->req.altNames),
-                                      altNameEncoded);
+                        altName = strtok(NULL, ";");
+                }
+        }
+
+        /* Allocate URI alt name objects */
+        if (metadata->altNamesURI != NULL)
+        {
+                char* altName = strtok((char*)metadata->altNamesURI, ";");
+                while (altName != NULL)
+                {
+                        ret = addAltNameEntry(&altNames, altName, strlen(altName), ASN_URI_TYPE);
+                        if (ret < 0)
+                                ERROR_OUT(ret);
+
+                        altName = strtok(NULL, ";");
+                }
+        }
+
+        /* Allocate IP alt name objects */
+        if (metadata->altNamesIP != NULL)
+        {
+                char* altName = strtok((char*)metadata->altNamesIP, ";");
+                while (altName != NULL)
+                {
+                        struct in_addr ipv4_addr;
+                        ret = inet_aton(altName, &ipv4_addr);
+                        if (ret == 0)
+                                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+
+                        ret = addAltNameEntry(&altNames, (char const*) &ipv4_addr.s_addr,
+                                              sizeof(ipv4_addr.s_addr), ASN_IP_TYPE);
+                        if (ret < 0)
+                                ERROR_OUT(ret);
+
+                        altName = strtok(NULL, ";");
+                }
+        }
+
+        /* Store the alt name encoded in the CSR. This uses WolfSSL internal API */
+        if (altNames != NULL)
+        {
+                ret = FlattenAltNames(request->req.altNames, sizeof(request->req.altNames), altNames);
                 if (ret >= 0)
                 {
                         request->req.altNamesSz = ret;
@@ -219,8 +290,8 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
         ret = KRITIS3M_PKI_SUCCESS;
 
 cleanup:
-        if (altNameEncoded != NULL)
-                FreeAltNames(altNameEncoded, request->req.heap);
+        if (altNames != NULL)
+                FreeAltNames(altNames, NULL);
 
         return ret;
 }

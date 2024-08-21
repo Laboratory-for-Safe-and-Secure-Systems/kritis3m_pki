@@ -53,7 +53,9 @@ typedef struct
         char const* commonName;
         char const* orgName;
         char const* orgUnit;
-        char const* altName;
+        char const* altNamesDNS;
+        char const* altNamesURI;
+        char const* altNamesIP;
 
         int validity;
 }
