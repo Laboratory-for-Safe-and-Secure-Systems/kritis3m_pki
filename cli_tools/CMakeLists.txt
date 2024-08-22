@@ -13,6 +13,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # at runtime.
 option(KRITIS3M_PKI_TOOLS_SELF_CONTAINED "Build self-contained CLI tools" ON)
 
+# When enabled, the compiled PKI libraries are installed, too. When disabled, only
+# the executables are installed. Only relevant when building self-contained tools.
+option(KRITIS3M_PKI_INSTALL_LIBRARIES "Install PKI libraries" OFF)
+
 
 # Define the main kritis3m_pki executable
 add_executable(kritis3m_pki
@@ -62,8 +66,11 @@ target_compile_options(kritis3m_se_importer PUBLIC
 # we build shared libraries to save space and prevent multiple-definition problems.
 if(KRITIS3M_PKI_TOOLS_SELF_CONTAINED)
         set(BUILD_SHARED_LIBS OFF)
+        set(KRITIS3M_PKI_STANDALONE OFF)
 else()
         set(BUILD_SHARED_LIBS ON)
+        set(KRITIS3M_PKI_STANDALONE ON)
+        set(KRITIS3M_PKI_INSTALL_LIBRARIES ON)
 endif()
 
 
@@ -84,8 +91,11 @@ endif()
 
 
 # Add the PKI libraries
-set(KRITIS3M_PKI_STANDALONE NOT ${KRITIS3M_PKI_TOOLS_SELF_CONTAINED})
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../library ${CMAKE_CURRENT_BINARY_DIR}/../library)
+if(KRITIS3M_PKI_INSTALL_LIBRARIES)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../library ${CMAKE_CURRENT_BINARY_DIR}/../library)
+else()
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../library ${CMAKE_CURRENT_BINARY_DIR}/../library EXCLUDE_FROM_ALL)
+endif()
 
 
 # Link the KRITIS3M_APPLICATIONS targets

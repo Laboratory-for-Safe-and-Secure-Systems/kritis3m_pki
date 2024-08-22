@@ -230,9 +230,9 @@ static void print_help(char const* name)
         printf("  --csrIn <file>          Path to a CSR in PEM format\n");
 
         printf("\nKey generation:\n");
-        printf("  Currently supported algorithms: rsa2048, rsa3072, rsa4096, ecc256, ecc384, ecc521, mldsa44, mldsa65, mldsa87\n");
-        printf("  --genKey <alogrithm>    Algorithm for key generation (see list below)\n");
-        printf("  --genAltKey <alogrithm> Algorithm for alternative key generation (see list below)\n");
+        printf("  Currently supported algorithms: rsa2048, rsa3072, rsa4096, secp256, secp384, secp521, mldsa44, mldsa65, mldsa87\n");
+        printf("  --genKey <alogrithm>    Algorithm for key generation (see list above)\n");
+        printf("  --genAltKey <alogrithm> Algorithm for alternative key generation (see list above)\n");
 
         printf("\nOutput:\n");
         printf("  --certOut <file>        Path to the root certificate output file (PEM)\n");

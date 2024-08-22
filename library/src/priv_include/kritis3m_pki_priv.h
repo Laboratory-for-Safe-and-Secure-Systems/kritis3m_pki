@@ -18,6 +18,7 @@
 #include "wolfssl/wolfcrypt/wc_pkcs11.h"
 
 
+#define TEMP_SZ 256
 #define LARGE_TEMP_SZ 12288
 
 #define ERROR_OUT(error_code) { ret = error_code; goto cleanup; }
@@ -86,9 +87,10 @@ struct outputCert
 };
 
 /* Internal helper methods */
-int getSigAlgForKey(SinglePrivateKey* key);
-void freeSinglePrivateKey(SinglePrivateKey* key);
 int initPkcs11Token(Pkcs11Token* token, int slot_id, uint8_t const* pin, size_t pin_size, int device_id);
 int initPrivateKey(SinglePrivateKey* key, int type);
+int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeySize, int type);
+int getSigAlgForKey(SinglePrivateKey* key);
+void freeSinglePrivateKey(SinglePrivateKey* key);
 
 #endif /* KRITIS3M_PKI_PRIV_H */

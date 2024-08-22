@@ -16,9 +16,9 @@
 #   --csrIn <file>          Path to a CSR in PEM format
 #
 # Key generation:
-#   Currently supported algorithms: rsa2048, rsa3072, rsa4096, ecc256, ecc384, ecc521, mldsa44, mldsa65, mldsa87
-#   --genKey <alogrithm>    Algorithm for key generation (see list below)
-#   --genAltKey <alogrithm> Algorithm for alternative key generation (see list below)
+#   Currently supported algorithms: rsa2048, rsa3072, rsa4096, secp256, secp384, secp521, mldsa44, mldsa65, mldsa87
+#   --genKey <alogrithm>    Algorithm for key generation (see list above)
+#   --genAltKey <alogrithm> Algorithm for alternative key generation (see list above)
 #
 # Output:
 #   --certOut <file>        Path to the root certificate output file (PEM)
@@ -30,7 +30,9 @@
 #   --CN <string>           Common Name (CN) for the certificate/CSR
 #   --O <string>            Organization (O) for the certificate/CSR
 #   --OU <string>           Organizational Unit (OU) for the certificate/CSR
-#   --altName <string>      Alternative name (SAN) for the certificate/CSR (only one supported atm)
+#   --altNamesDNS <string>  SAN DNS entries for the certificate/CSR (separated by ; and wrappend in ")
+#   --altNamesURI <string>  SAN URI entries for the certificate/CSR (separated by ; and wrappend in ")
+#   --altNamesIP <string>   SAN IP address entries for the certificate/CSR (separated by ; and wrappend in ")
 #   --validity <days>       Validity period in days (default: 365)
 #   --enableCA              Create a cert that can sign new certs (deafault is entity cert/CSR)
 #
@@ -55,7 +57,7 @@ _kritis3m_pki_completions() {
     opts="--issuerKey --issuerAltKey --entityKey --entityAltKey --issuerCert --csrIn \
           --genKey --genAltKey \
           --certOut --csrOut --keyOut --altKeyOut \
-          --CN --O --OU --altName --validity --enableCA \
+          --CN --O --OU --altNamesDNS --altNamesURI --altNamesIP --validity --enableCA \
           --middleware --slotIssuerKey --slotEntityKey \
           --verbose --help"
 
@@ -64,13 +66,13 @@ _kritis3m_pki_completions() {
             _filedir
             return 0
             ;;
-        --CN|--O|--OU|--altName|--validity|--slotIssuerKey|--slotEntityKey)
+        --CN|--O|--OU|--altNamesDNS|--altNamesURI|--altNamesIP|--validity|--slotIssuerKey|--slotEntityKey)
             # No file completion needed for these options, just suggest an empty list
             COMPREPLY=()
             return 0
             ;;
         --genKey|--genAltKey)
-            algos="rsa2048 rsa3072 rsa4096 ecc256 ecc384 ecc521 mldsa44 mldsa65 mldsa87"
+            algos="rsa2048 rsa3072 rsa4096 secp256 secp384 secp521 mldsa44 mldsa65 mldsa87"
             COMPREPLY=( $(compgen -W "${algos}" -- ${cur}) )
             return 0
             ;;

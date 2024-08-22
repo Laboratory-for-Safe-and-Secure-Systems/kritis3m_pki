@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
 
 #include "cli_common.h"
 
@@ -66,7 +68,7 @@ int writeFile(const char* filePath, uint8_t* buffer, size_t bufferSize, bool app
 
         if (file == NULL)
         {
-                printf("file (%s) cannot be opened\n", filePath);
+                printf("file (%s) cannot be opened: %s\n", filePath, strerror(errno));
                 return -1;
         }
 
