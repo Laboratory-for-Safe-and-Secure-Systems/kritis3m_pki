@@ -292,8 +292,33 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 ret = wc_Falcon_PublicKeyDecode(decodedCsr.publicKey, &index,
                                 &outputCert->ownKey.key.falcon, decodedCsr.pubKeySize);
         }
+        else if (decodedCsr.keyOID == ED25519k)
+        {
+                wc_ed25519_init(&outputCert->ownKey.key.ed25519);
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                outputCert->ownKey.certKeyType = ED25519_TYPE;
+                ret = wc_Ed25519PublicKeyDecode(decodedCsr.publicKey, &index,
+                                                &outputCert->ownKey.key.ed25519,
+                                                decodedCsr.pubKeySize);
+        }
+        else if (decodedCsr.keyOID == ED448k)
+        {
+                wc_ed448_init(&outputCert->ownKey.key.ed448);
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                outputCert->ownKey.certKeyType = ED448_TYPE;
+                ret = wc_Ed448PublicKeyDecode(decodedCsr.publicKey, &index,
+                                                &outputCert->ownKey.key.ed448,
+                                                decodedCsr.pubKeySize);
+        }
         else
                 ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
+
+        if (ret < 0)
+                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
 
 
         /* Init the certificate structure */

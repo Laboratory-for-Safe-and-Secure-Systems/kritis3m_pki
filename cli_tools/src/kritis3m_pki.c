@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 
         application_config app_config = {0};
         pki_paths paths = {0};
-        pki_keygen_algorithm keygen_algos = {0};
+        pki_generation_info gen_info = {0};
         pki_metadata metadata = {0};
         pki_secure_element secure_element = {0};
 
@@ -42,7 +42,7 @@ int main(int argc, char** argv)
 
 
         /* Parse the command line arguments */
-        ret = parse_cli_arguments(&app_config, &paths, &keygen_algos, &metadata,
+        ret = parse_cli_arguments(&app_config, &paths, &gen_info, &metadata,
                                   &secure_element, argc, argv);
         LOG_LVL_SET(app_config.log_level);
         if (ret != 0)
@@ -155,12 +155,12 @@ int main(int argc, char** argv)
         }
 
         /* Check if we want to generate a new key */
-        if (keygen_algos.keyAlg != NULL)
+        if (gen_info.keyGenAlg != NULL)
         {
-                LOG_INFO("Generating a new %s key", keygen_algos.keyAlg);
+                LOG_INFO("Generating a new %s key", gen_info.keyGenAlg);
 
                 /* Generate the key */
-                ret = privateKey_generateKey(entityKey, keygen_algos.keyAlg);
+                ret = privateKey_generateKey(entityKey, gen_info.keyGenAlg);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to generate key: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
@@ -187,12 +187,12 @@ int main(int argc, char** argv)
                 }
         }
         /* Check if we need an alternative key */
-        if (keygen_algos.altKeyAlg != NULL)
+        if (gen_info.altKeyGenAlg != NULL)
         {
-                LOG_INFO("Generating a new %s entity key", keygen_algos.altKeyAlg);
+                LOG_INFO("Generating a new %s entity key", gen_info.altKeyGenAlg);
 
                 /* Generate the key */
-                ret = privateKey_generateAltKey(entityKey, keygen_algos.altKeyAlg);
+                ret = privateKey_generateAltKey(entityKey, gen_info.altKeyGenAlg);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to generate alt key: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
@@ -310,6 +310,15 @@ int main(int argc, char** argv)
                                                   kritis3m_pki_error_message(ret), ret);
                         }
                 }
+        }
+        else if (gen_info.selfSignCert)
+        {
+                LOG_INFO("Generating a new self-signed certificate");
+
+                /* Copy the entitiyKey to the issuerKey */
+                ret = privateKey_copyKey(issuerKey, entityKey);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to copy entity key to issuer key: %s (%d)", kritis3m_pki_error_message(ret), ret);
         }
 
         /* Load the issuer certificate */

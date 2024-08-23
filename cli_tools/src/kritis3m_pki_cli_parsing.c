@@ -37,6 +37,7 @@ static const struct option cli_options[] =
         { "middleware",         required_argument, 0, 0x15 },
         { "slotIssuerKey",      required_argument, 0, 0x16 },
         { "slotEntityKey",      required_argument, 0, 0x17 },
+        { "selfSigned",         no_argument,       0, 0x18 },
         { "verbose",            no_argument,       0, 'v'  },
         { "debug",              no_argument,       0, 'd'  },
         { "help",               no_argument,       0, 'h'  },
@@ -44,7 +45,7 @@ static const struct option cli_options[] =
 };
 
 
-static void set_defaults(application_config* app_config, pki_paths* paths, pki_keygen_algorithm* keygen_algos,
+static void set_defaults(application_config* app_config, pki_paths* paths, pki_generation_info* generation_info,
                          pki_metadata* metadata, pki_secure_element* secure_element);
 static void print_help(char const* name);
 
@@ -53,10 +54,10 @@ static void print_help(char const* name);
  *
  * Returns 0 on success, +1 in case the help was printed and -1 on failure (error is printed on console).
  */
-int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_keygen_algorithm* keygen_algos,
+int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_generation_info* generation_info,
                         pki_metadata* metadata, pki_secure_element* secure_element, size_t argc, char** argv)
 {
-        if ((app_config == NULL) || (paths == NULL) || (keygen_algos == NULL) ||
+        if ((app_config == NULL) || (paths == NULL) || (generation_info == NULL) ||
             (metadata == NULL) || (secure_element == NULL))
         {
                 LOG_ERROR("mandatory argument missing for parse_cli_arguments()");
@@ -69,7 +70,7 @@ int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_ke
         }
 
         /* Set default values */
-        set_defaults(app_config, paths, keygen_algos, metadata, secure_element);
+        set_defaults(app_config, paths, generation_info, metadata, secure_element);
 
         /* Parse CLI args */
         int index = 0;
@@ -131,10 +132,10 @@ int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_ke
                                 paths->csrOutputFilePath = optarg;
                                 break;
                         case 0x11: /* genKey */
-                                keygen_algos->keyAlg = optarg;
+                                generation_info->keyGenAlg = optarg;
                                 break;
                         case 0x12: /* genAltKey */
-                                keygen_algos->altKeyAlg = optarg;
+                                generation_info->altKeyGenAlg = optarg;
                                 break;
                         case 0x13: /* keyOut */
                                 paths->entityKeyOutputPath = optarg;
@@ -150,6 +151,9 @@ int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_ke
                                 break;
                         case 0x17: /* slotEntityKey */
                                 secure_element->slotEntityKey = strtol(optarg, NULL, 10);
+                                break;
+                        case 0x18: /* selfSigned */
+                                generation_info->selfSignCert = true;
                                 break;
                         case 'v':
                                 app_config->log_level = LOG_LVL_INFO;
@@ -174,7 +178,7 @@ int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_ke
 }
 
 
-static void set_defaults(application_config* app_config, pki_paths* paths, pki_keygen_algorithm* keygen_algos,
+static void set_defaults(application_config* app_config, pki_paths* paths, pki_generation_info* generation_info,
                          pki_metadata* metadata, pki_secure_element* secure_element)
 {
         /* Application config */
@@ -192,9 +196,10 @@ static void set_defaults(application_config* app_config, pki_paths* paths, pki_k
         paths->csrOutputFilePath = NULL;
         paths->csrInputPath = NULL;
 
-        /* Algorithm type for key generation */
-        keygen_algos->keyAlg = NULL;
-        keygen_algos->altKeyAlg = NULL;
+        /* Generation information */
+        generation_info->keyGenAlg = NULL;
+        generation_info->altKeyGenAlg = NULL;
+        generation_info->selfSignCert = false;
 
         /* Metadata */
         metadata->enableCA = false;
@@ -230,7 +235,10 @@ static void print_help(char const* name)
         printf("  --csrIn <file>          Path to a CSR in PEM format\n");
 
         printf("\nKey generation:\n");
-        printf("  Currently supported algorithms: rsa2048, rsa3072, rsa4096, secp256, secp384, secp521, mldsa44, mldsa65, mldsa87\n");
+        printf("  Currently supported algorithms: rsa2048, rsa3072, rsa4096\n");
+        printf("                                  secp256, secp384, secp521\n");
+        printf("                                  ed25519, ed448\n");
+        printf("                                  mldsa44, mldsa65, mldsa87\n");
         printf("  --genKey <alogrithm>    Algorithm for key generation (see list above)\n");
         printf("  --genAltKey <alogrithm> Algorithm for alternative key generation (see list above)\n");
 
@@ -249,6 +257,7 @@ static void print_help(char const* name)
         printf("  --altNamesIP <string>   SAN IP address entries for the certificate/CSR (separated by ; and wrappend in \")\n");
         printf("  --validity <days>       Validity period in days (default: 365)\n");
         printf("  --enableCA              Create a cert that can sign new certs (deafault is entity cert/CSR)\n");
+        printf("  --selfSigned            Create a self-signed certificate (default: false)\n");
 
         printf("\nSecure Element:\n");
         printf("  When using a secure element for key storage, you have to supply the PKCS#11 key labels using the arguments\n");

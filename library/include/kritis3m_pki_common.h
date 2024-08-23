@@ -102,6 +102,13 @@ int privateKey_generateKey(PrivateKey* key, char const* algorithm);
 int privateKey_generateAltKey(PrivateKey* key, char const* algorithm);
 
 
+/* Copy a Privatekey object to another one.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_copyKey(PrivateKey* destination, PrivateKey* source);
+
+
 /* Convert the primary key in `key` to PEM and write the result into `buffer`. On function
  * entry, `buffer_size` must contain the size of the provided output buffer. After successful
  * completion, `buffer_size` will contain the size of the written output in the buffer.

@@ -40,10 +40,12 @@ pki_paths;
 
 typedef struct
 {
-        char const* keyAlg;
-        char const* altKeyAlg;
+        char const* keyGenAlg;
+        char const* altKeyGenAlg;
+
+        bool selfSignCert;
 }
-pki_keygen_algorithm;
+pki_generation_info;
 
 
 typedef struct
@@ -79,7 +81,7 @@ pki_secure_element;
  *
  * Returns 0 on success, +1 in case the help was printed and -1 on failure (error is printed on console).
  */
-int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_keygen_algorithm* keygen_algos,
+int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_generation_info* generation_info,
                         pki_metadata* metadata, pki_secure_element* secure_element, size_t argc, char** argv);
 
 

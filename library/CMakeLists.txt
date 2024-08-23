@@ -64,7 +64,7 @@ target_include_directories(kritis3m_pki_common PUBLIC
 target_include_directories(kritis3m_pki_common PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/priv_include
 )
-target_link_libraries(kritis3m_pki_common PRIVATE wolfssl)
+target_link_libraries(kritis3m_pki_common PUBLIC wolfssl)
 
 
 # Define the client library

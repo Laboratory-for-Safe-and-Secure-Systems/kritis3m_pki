@@ -371,6 +371,38 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         ret = wc_Falcon_PublicKeyToDer(&key->key.falcon, request->altPubKeyDer,
                                                        (word32)ret, 1);
                 }
+                else if (key->type == ED25519k)
+                {
+                        /* Get output size */
+                        ret = wc_Ed25519PublicKeyToDer(&key->key.ed25519, NULL, 0, 1);
+                        if (ret <= 0)
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                        /* Allocate buffer */
+                        request->altPubKeyDer = (uint8_t*) malloc(ret);
+                        if (request->altPubKeyDer == NULL)
+                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+
+                        /* Export public key */
+                        ret = wc_Ed25519PublicKeyToDer(&key->key.ed25519, request->altPubKeyDer,
+                                                      (word32)ret, 1);
+                }
+                else if (key->type == ED448k)
+                {
+                        /* Get output size */
+                        ret = wc_Ed448PublicKeyToDer(&key->key.ed448, NULL, 0, 1);
+                        if (ret <= 0)
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                        /* Allocate buffer */
+                        request->altPubKeyDer = (uint8_t*) malloc(ret);
+                        if (request->altPubKeyDer == NULL)
+                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+
+                        /* Export public key */
+                        ret = wc_Ed448PublicKeyToDer(&key->key.ed448, request->altPubKeyDer,
+                                                      (word32)ret, 1);
+                }
 
                 if (ret < 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);

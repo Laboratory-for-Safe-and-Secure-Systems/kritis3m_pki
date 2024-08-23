@@ -291,6 +291,32 @@ int initPrivateKey(SinglePrivateKey* key, int type)
 
                 key->type = type;
         }
+        else if (type == ED25519k)
+        {
+                if (key->external.label != NULL)
+                        ret = wc_ed25519_init_ex(&key->key.ed25519, NULL, key->external.deviceId);
+                else
+                        ret = wc_ed25519_init(&key->key.ed25519);
+
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                key->type = ED25519k;
+                key->certKeyType = ED25519_TYPE;
+        }
+        else if (type == ED448k)
+        {
+                if (key->external.label != NULL)
+                        ret = wc_ed448_init_ex(&key->key.ed448, NULL, key->external.deviceId);
+                else
+                        ret = wc_ed448_init(&key->key.ed448);
+
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                key->type = ED448k;
+                key->certKeyType = ED448_TYPE;
+        }
         else
                 ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
 
@@ -373,6 +399,28 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
 
                 /* Check if public and private key belong together */
                 ret = wc_falcon_check_key(&key->key.falcon);
+        }
+        else if (type == ED25519k)
+        {
+                /* Import the public key */
+                ret = wc_Ed25519PublicKeyDecode(pubKey, &idx, &key->key.ed25519,
+                                                        pubKeySize);
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                /* Check if public and private key belong together */
+                ret = wc_ed25519_check_key(&key->key.ed25519);
+        }
+        else if (type == ED448k)
+        {
+                /* Import the public key */
+                ret = wc_Ed448PublicKeyDecode(pubKey, &idx, &key->key.ed448,
+                                                        pubKeySize);
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+
+                /* Check if public and private key belong together */
+                ret = wc_ed448_check_key(&key->key.ed448);
         }
         else
                 ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
@@ -462,12 +510,32 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         else
                 freeSinglePrivateKey(key);
 
+        /* Try Ed25519 */
+        index = 0;
+        initPrivateKey(key, ED25519k);
+        ret = wc_Ed25519PrivateKeyDecode(der->buffer, &index, &key->key.ed25519, der->length);
+        if (ret == 0)
+                /* Ed25519 was a success, so we are done */
+                return KRITIS3M_PKI_SUCCESS;
+        else
+                freeSinglePrivateKey(key);
+
+        /* Try Ed448 */
+        index = 0;
+        initPrivateKey(key, ED448k);
+        ret = wc_Ed448PrivateKeyDecode(der->buffer, &index, &key->key.ed448, der->length);
+        if (ret == 0)
+                /* Ed448 was a success, so we are done */
+                return KRITIS3M_PKI_SUCCESS;
+        else
+                freeSinglePrivateKey(key);
+
         return KRITIS3M_PKI_KEY_UNSUPPORTED;
 }
 
 
-/* Internal helper method for parsing a PEM file */
-static int parsePemFile(uint8_t const* buffer, size_t buffer_size, SinglePrivateKey* key, EncryptedInfo* info)
+/* Internal helper method for parsing a PEM buffer */
+static int parsePemBuffer(uint8_t const* buffer, size_t buffer_size, SinglePrivateKey* key, EncryptedInfo* info)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
         word32 index = 0;
@@ -506,6 +574,30 @@ static int parsePemFile(uint8_t const* buffer, size_t buffer_size, SinglePrivate
                 else if ((key->type == FALCON_LEVEL1k) || (key->type == FALCON_LEVEL5k))
                         ret = wc_Falcon_PrivateKeyDecode(der->buffer, &index,
                                         &key->key.falcon, der->length);
+                else if (key->type == ED25519k)
+                {
+                        ret = wc_Ed25519PrivateKeyDecode(der->buffer, &index,
+                                        &key->key.ed25519, der->length);
+
+                        if (ret == 0 && key->key.ed25519.pubKeySet == 0)
+                        {
+                                ret = wc_ed25519_make_public(&key->key.ed25519, key->key.ed25519.p, sizeof(key->key.ed25519.p));
+                                if (ret == 0)
+                                        ret = wc_ed25519_check_key(&key->key.ed25519);
+                        }
+                }
+                else if (key->type == ED448k)
+                {
+                        ret = wc_Ed448PrivateKeyDecode(der->buffer, &index,
+                                        &key->key.ed448, der->length);
+
+                        if (ret == 0 && key->key.ed448.pubKeySet == 0)
+                        {
+                                ret = wc_ed448_make_public(&key->key.ed448, key->key.ed448.p, sizeof(key->key.ed448.p));
+                                if (ret == 0)
+                                        ret = wc_ed448_check_key(&key->key.ed448);
+                        }
+                }
                 else
                         ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
 
@@ -541,14 +633,14 @@ int privateKey_loadKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size_t 
         memset(&info, 0, sizeof(EncryptedInfo));
 
         /* Parse primary key */
-        ret = parsePemFile(buffer, buffer_size, &key->primaryKey, &info);
+        ret = parsePemBuffer(buffer, buffer_size, &key->primaryKey, &info);
         if (ret != 0)
                 ERROR_OUT(ret);
 
-        /* Parse alternative key if present in the PEM file */
+        /* Parse alternative key if present in the PEM data */
         if (info.consumed < buffer_size)
         {
-                ret = parsePemFile(buffer + info.consumed, buffer_size - info.consumed, &key->alternativeKey, &info);
+                ret = parsePemBuffer(buffer + info.consumed, buffer_size - info.consumed, &key->alternativeKey, &info);
         }
 
 cleanup:
@@ -572,7 +664,7 @@ int privateKey_loadAltKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size
         memset(&info, 0, sizeof(EncryptedInfo));
 
         /* Parse alternative key */
-        ret = parsePemFile(buffer, buffer_size, &key->alternativeKey, &info);
+        ret = parsePemBuffer(buffer, buffer_size, &key->alternativeKey, &info);
 
 cleanup:
         return ret;
@@ -640,6 +732,23 @@ int generateKey(SinglePrivateKey* key, char const* algorithm)
                 /* Generate the actual key pair */
                 ret = wc_dilithium_make_key(&key->key.dilithium, &rng);
         }
+        /* Falcon not yet supported */
+        else if (strcmp(algorithm, "ed25519") == 0)
+        {
+                /* Initialize the key */
+                ret = initPrivateKey(key, ED25519k);
+
+                /* Generate the actual key pair */
+                ret = wc_ed25519_make_key(&rng, ED25519_KEY_SIZE, &key->key.ed25519);
+        }
+        else if (strcmp(algorithm, "ed448") == 0)
+        {
+                /* Initialize the key */
+                ret = initPrivateKey(key, ED448k);
+
+                /* Generate the actual key pair */
+                ret = wc_ed448_make_key(&rng, ED448_KEY_SIZE, &key->key.ed448);
+        }
         else
                 ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
 
@@ -687,7 +796,7 @@ int privateKey_generateAltKey(PrivateKey* key, char const* algorithm)
         if ((key == NULL) || (algorithm == NULL))
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
 
-        /* Generate primary key */
+        /* Generate alternative key */
         ret = generateKey(&key->alternativeKey, algorithm);
 
         return ret;
@@ -725,7 +834,6 @@ int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size
                  (key->type == DILITHIUM_LEVEL5k))
         {
                 /* Encode the key and store it in DER encoding */
-                /* wc_Dilithium_KeyToDer() not working currently... */
                 // ret = wc_Dilithium_KeyToDer(&key->key.dilithium, derBuffer, derSize);
                 ret = wc_Dilithium_PrivateKeyToDer(&key->key.dilithium, derBuffer, derSize);
         }
@@ -733,9 +841,20 @@ int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size
                  (key->type == FALCON_LEVEL5k))
         {
                 /* Encode the key and store it in DER encoding */
-                /* wc_Falcon_KeyToDer() not working currently... */
                 // ret = wc_Falcon_KeyToDer(&key->key.falcon, derBuffer, derSize);
                 ret = wc_Falcon_PrivateKeyToDer(&key->key.falcon, derBuffer, derSize);
+        }
+        else if (key->type == ED25519k)
+        {
+                /* Encode the key and store it in DER encoding */
+                ret = wc_Ed25519PrivateKeyToDer(&key->key.ed25519, derBuffer, derSize);
+                // ret = wc_Ed25519KeyToDer(&key->key.ed25519, derBuffer, derSize);
+        }
+        else if (key->type == ED448k)
+        {
+                /* Encode the key and store it in DER encoding */
+                ret = wc_Ed448PrivateKeyToDer(&key->key.ed448, derBuffer, derSize);
+                // ret = wc_Ed448KeyToDer(&key->key.ed25519, derBuffer, derSize);
         }
         else
                 ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED);
@@ -802,6 +921,87 @@ int privateKey_writeAltKeyToBuffer(PrivateKey* key, uint8_t* buffer, size_t* buf
 }
 
 
+/* Internal helper method to copy a single private key */
+int copySinglePrivateKey(SinglePrivateKey* destination, SinglePrivateKey* source)
+{
+        int ret = KRITIS3M_PKI_SUCCESS;
+
+        if ((destination == NULL) || (source == NULL))
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        /* No need to copy */
+        if (source->init == false)
+                return KRITIS3M_PKI_SUCCESS;
+
+        /* Allocate temporary buffers */
+        uint8_t* pemBuffer = (uint8_t*) malloc(LARGE_TEMP_SZ);
+        size_t pemSize = LARGE_TEMP_SZ;
+
+        if (pemBuffer == NULL)
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+
+        /* Export the source key. We re-use our internal exportPrivateKey() method to
+         * not duplicate code. This method exports PEM data. This is actually a very
+         * inefficient method to copy a SinglePrivateKey, but it re-uses the maximum
+         * of existing code.
+         * ToDo: refactor the code to do more efficient deep copies of a key.
+         * */
+        ret = exportPrivateKey(source, pemBuffer, &pemSize);
+        if (ret != 0)
+                ERROR_OUT(ret);
+
+        /* Decode PEM data into destination key */
+        ret = parsePemBuffer(pemBuffer, pemSize, destination, NULL);
+        if (ret != 0)
+                ERROR_OUT(ret);
+
+        /* Copy external reference data */
+        if (source->external.label != NULL)
+        {
+                destination->external.label = (char*) malloc(strlen(source->external.label) + 1);
+                if (destination->external.label == NULL)
+                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+
+                strcpy(destination->external.label, source->external.label);
+                destination->external.deviceId = source->external.deviceId;
+        }
+
+        /* Copy remaining data */
+        destination->init = true;
+        destination->type = source->type;
+        destination->certKeyType = source->certKeyType;
+
+cleanup:
+        if (pemBuffer != NULL)
+                free(pemBuffer);
+
+        return ret;
+}
+
+
+/* Copy a Privatekey object to another one.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int privateKey_copyKey(PrivateKey* destination, PrivateKey* source)
+{
+        int ret = KRITIS3M_PKI_SUCCESS;
+
+        if ((destination == NULL) || (source == NULL))
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        /* Copy primary key */
+        ret = copySinglePrivateKey(&destination->primaryKey, &source->primaryKey);
+        if (ret != 0)
+                return ret;
+
+        /* Copy alternative key */
+        ret = copySinglePrivateKey(&destination->alternativeKey, &source->alternativeKey);
+
+        return ret;
+}
+
+
 /* Internal helper method */
 int getSigAlgForKey(SinglePrivateKey* key)
 {
@@ -848,6 +1048,12 @@ int getSigAlgForKey(SinglePrivateKey* key)
         case FALCON_LEVEL5k:
                 sigAlg = CTC_FALCON_LEVEL5;
                 break;
+        case ED25519k:
+                sigAlg = CTC_ED25519;
+                break;
+        case ED448k:
+                sigAlg = CTC_ED448;
+                break;
         default:
                 sigAlg = KRITIS3M_PKI_KEY_UNSUPPORTED;
                 break;
@@ -879,6 +1085,12 @@ void freeSinglePrivateKey(SinglePrivateKey* key)
                         case FALCON_LEVEL1k:
                         case FALCON_LEVEL5k:
                                 wc_falcon_free(&key->key.falcon);
+                                break;
+                        case ED25519k:
+                                wc_ed25519_free(&key->key.ed25519);
+                                break;
+                        case ED448k:
+                                wc_ed448_free(&key->key.ed448);
                                 break;
                         }
                 }

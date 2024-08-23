@@ -6,12 +6,14 @@
 #include <stdbool.h>
 
 #include "wolfssl/options.h"
-#include "wolfssl/ssl.h"
 #include "wolfssl/wolfcrypt/settings.h"
+#include "wolfssl/ssl.h"
 #include "wolfssl/wolfcrypt/ecc.h"
 #include "wolfssl/wolfcrypt/rsa.h"
 #include "wolfssl/wolfcrypt/dilithium.h"
 #include "wolfssl/wolfcrypt/falcon.h"
+#include "wolfssl/wolfcrypt/ed25519.h"
+#include "wolfssl/wolfcrypt/ed448.h"
 #include "wolfssl/wolfcrypt/asn_public.h"
 #include "wolfssl/wolfcrypt/asn.h"
 #include "wolfssl/wolfcrypt/error-crypt.h"
@@ -43,6 +45,8 @@ typedef struct singlePrivateKey
                 RsaKey rsa;
                 dilithium_key dilithium;
                 falcon_key falcon;
+                ed25519_key ed25519;
+                ed448_key ed448;
         } key;
         struct
         {

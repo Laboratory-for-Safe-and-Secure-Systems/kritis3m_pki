@@ -16,7 +16,10 @@
 #   --csrIn <file>          Path to a CSR in PEM format
 #
 # Key generation:
-#   Currently supported algorithms: rsa2048, rsa3072, rsa4096, secp256, secp384, secp521, mldsa44, mldsa65, mldsa87
+#   Currently supported algorithms: rsa2048, rsa3072, rsa4096,
+#                                   secp256, secp384, secp521,
+#                                   ed22519, ed448,
+#                                   mldsa44, mldsa65, mldsa87
 #   --genKey <alogrithm>    Algorithm for key generation (see list above)
 #   --genAltKey <alogrithm> Algorithm for alternative key generation (see list above)
 #
@@ -35,6 +38,7 @@
 #   --altNamesIP <string>   SAN IP address entries for the certificate/CSR (separated by ; and wrappend in ")
 #   --validity <days>       Validity period in days (default: 365)
 #   --enableCA              Create a cert that can sign new certs (deafault is entity cert/CSR)
+#   --selfSigned            Create a self-signed certificate (default: false)
 #
 # Secure Element:
 #   When using a secure element for key storage, you have to supply the PKCS#11 key labels using the arguments
@@ -57,7 +61,7 @@ _kritis3m_pki_completions() {
     opts="--issuerKey --issuerAltKey --entityKey --entityAltKey --issuerCert --csrIn \
           --genKey --genAltKey \
           --certOut --csrOut --keyOut --altKeyOut \
-          --CN --O --OU --altNamesDNS --altNamesURI --altNamesIP --validity --enableCA \
+          --CN --O --OU --altNamesDNS --altNamesURI --altNamesIP --validity --enableCA --selfSigned \
           --middleware --slotIssuerKey --slotEntityKey \
           --verbose --help"
 
@@ -72,7 +76,7 @@ _kritis3m_pki_completions() {
             return 0
             ;;
         --genKey|--genAltKey)
-            algos="rsa2048 rsa3072 rsa4096 secp256 secp384 secp521 mldsa44 mldsa65 mldsa87"
+            algos="rsa2048 rsa3072 rsa4096 secp256 secp384 secp521 ed22519 ed448 mldsa44 mldsa65 mldsa87"
             COMPREPLY=( $(compgen -W "${algos}" -- ${cur}) )
             return 0
             ;;
