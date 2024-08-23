@@ -4,6 +4,7 @@ includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
 
 Name: @LIBRARY_NAME@
 Description: KRITIS3m PKI @LIBRARY_ROLE@ library
+Version: 0.9.9
 Cflags: -I${includedir}/kritis3m_pki
 Libs: -L${libdir} -l@LIBRARY_NAME@
 
