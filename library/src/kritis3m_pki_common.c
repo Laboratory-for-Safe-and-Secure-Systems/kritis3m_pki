@@ -467,8 +467,9 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
                 if (key->external.label != NULL)
                         ret = wc_CryptoCb_PqcSignatureCheckPrivKey(&key->key.falcon,
                                         WC_PQC_SIG_TYPE_FALCON, pubKey, pubKeySize);
-                else
-                        ret = wc_falcon_check_key(&key->key.falcon);
+                // else
+                        /* Not supported currently... */
+                        // ret = wc_falcon_check_key(&key->key.falcon);
         }
         else if (type == ED25519k)
         {
