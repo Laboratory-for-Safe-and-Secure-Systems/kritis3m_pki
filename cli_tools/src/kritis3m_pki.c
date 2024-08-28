@@ -20,6 +20,29 @@ LOG_MODULE_CREATE(kritis3m_pki);
 #define ERROR_OUT(...) { LOG_ERROR(__VA_ARGS__); ret = 1; goto exit; }
 
 
+static void pki_lib_log_callback(int32_t level, char const* message)
+{
+        switch (level)
+        {
+        case KRITIS3M_PKI_LOG_LEVEL_ERR:
+                LOG_ERROR("%s", message);
+                break;
+        case KRITIS3M_PKI_LOG_LEVEL_WRN:
+                LOG_WARN("%s", message);
+                break;
+        case KRITIS3M_PKI_LOG_LEVEL_INF:
+                LOG_INFO("%s", message);
+                break;
+        case KRITIS3M_PKI_LOG_LEVEL_DBG:
+                LOG_DEBUG("%s", message);
+                break;
+        default:
+                LOG_ERROR("unknown log level %d: %s", level, message);
+                break;
+        }
+}
+
+
 int main(int argc, char** argv)
 {
         int ret = 0;
@@ -48,11 +71,20 @@ int main(int argc, char** argv)
         if (ret != 0)
                 ERROR_OUT("unable to parse command line arguments");
 
-
         /* Create a buffer to read the file contents */
         buffer = (uint8_t*) malloc(bufferSize);
         if (buffer == NULL)
                 ERROR_OUT("unable to allocate buffer");
+
+        /* Initialize the PKI libraries */
+        krits3m_pki_configuration pki_lib_config = {
+                .logging_enabled = true,
+                .log_level = LOG_LVL_GET(),
+                .custom_log_callback = pki_lib_log_callback,
+        };
+        ret = kritis3m_pki_init(&pki_lib_config);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                ERROR_OUT("unable to initialize PKI libraries: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
         /* Check if we want to use a secure element */
         if (secure_element.middlewarePath != NULL)
@@ -351,17 +383,8 @@ int main(int argc, char** argv)
                 /* We have to create a new CSR */
                 request = signingRequest_new();
 
-                SigningRequestMetadata csr_metadata = {
-                        .CN = metadata.commonName,
-                        .O = metadata.orgName,
-                        .OU = metadata.orgUnit,
-                        .altNamesDNS = metadata.altNamesDNS,
-                        .altNamesURI = metadata.altNamesURI,
-                        .altNamesIP = metadata.altNamesIP,
-                };
-
                 /* Create the CSR */
-                ret = signingRequest_init(request, &csr_metadata);
+                ret = signingRequest_init(request, &metadata.certMetadata);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to create CSR: %s (%d)", kritis3m_pki_error_message(ret), ret);
 

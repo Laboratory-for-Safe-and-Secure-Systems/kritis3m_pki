@@ -23,7 +23,7 @@
 #define TEMP_SZ 256
 #define LARGE_TEMP_SZ 12288
 
-#define ERROR_OUT(error_code) { ret = error_code; goto cleanup; }
+#define ERROR_OUT(error_code, ...) { pki_log(KRITIS3M_PKI_LOG_LEVEL_ERR, __VA_ARGS__); ret = error_code; goto cleanup; }
 
 #define SubjectAltPublicKeyInfoExtension "2.5.29.72"
 #define AltSignatureAlgorithmExtension "2.5.29.73"
@@ -91,6 +91,7 @@ struct outputCert
 };
 
 /* Internal helper methods */
+void pki_log(int32_t level, char const* message, ...);
 int initPkcs11Token(Pkcs11Token* token, int slot_id, uint8_t const* pin, size_t pin_size, int device_id);
 int initPrivateKey(SinglePrivateKey* key, int type);
 int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeySize, int type);

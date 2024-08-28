@@ -5,6 +5,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "kritis3m_pki_common.h"
+#include "kritis3m_pki_client.h"
+
 
 #define PKCS11_LABEL_IDENTIFIER "pkcs11:"
 #define PKCS11_LABEL_IDENTIFIER_LEN 7
@@ -52,12 +55,7 @@ typedef struct
 {
         bool enableCA;
 
-        char const* commonName;
-        char const* orgName;
-        char const* orgUnit;
-        char const* altNamesDNS;
-        char const* altNamesURI;
-        char const* altNamesIP;
+        SigningRequestMetadata certMetadata;
 
         int validity;
 }

@@ -10,9 +10,9 @@
 /* Structure for the metadata to be placed in the CSR */
 typedef struct
 {
-        char const* CN;
-        char const* O;
-        char const* OU;
+        char const* commonName;
+        char const* org;
+        char const* unit;
         char const* altNamesDNS;
         char const* altNamesURI;
         char const* altNamesIP;

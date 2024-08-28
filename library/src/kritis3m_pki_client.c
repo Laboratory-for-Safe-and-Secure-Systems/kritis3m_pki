@@ -49,7 +49,7 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
 
         if (entityTokenInitialized == false)
-                return KRITIS3M_PKI_PKCS11_ERROR;
+                ERROR_OUT(KRITIS3M_PKI_LOG_LEVEL_ERR, "PKCS#11 token not initialized");
 
         /* Determine primary key type */
         int type = -1;
@@ -71,13 +71,13 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
                         type = PKCS11_KEY_TYPE_FALCON;
                         break;
                 default:
-                        return KRITIS3M_PKI_KEY_UNSUPPORTED;
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported primary key type");
         }
 
         /* Import the primary key */
         ret = wc_Pkcs11StoreKey_ex(&entityToken, type, 0, &key->primaryKey.key, 1);
         if (ret != 0)
-                return KRITIS3M_PKI_PKCS11_ERROR;
+                ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "Failed to import primary key: %d", ret);
 
         /* Import the alternative key */
         if (key->alternativeKey.init == true)
@@ -102,16 +102,17 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
                                 type = PKCS11_KEY_TYPE_FALCON;
                                 break;
                         default:
-                                return KRITIS3M_PKI_KEY_UNSUPPORTED;
+                                ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported alternative key type");
                 }
 
                 /* Import the primary key */
                 ret = wc_Pkcs11StoreKey_ex(&entityToken, type, 0, &key->alternativeKey.key, 1);
                 if (ret != 0)
-                        return KRITIS3M_PKI_PKCS11_ERROR;
+                        ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "Failed to import alternative key: %d", ret);
         }
 
-        return KRITIS3M_PKI_SUCCESS;
+cleanup:
+        return ret;
 }
 
 
@@ -150,7 +151,7 @@ static int addAltNameEntry(DNS_entry** altNameList, char const* altName, int alt
         int ret = 0;
         DNS_entry* newEntry = AltNameNew(NULL);
         if (newEntry == NULL)
-                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to create a new AltName entry");
 
         newEntry->len = altNameLen;
         newEntry->type = type;
@@ -161,7 +162,7 @@ static int addAltNameEntry(DNS_entry** altNameList, char const* altName, int alt
                                          NULL,
                                          DYNAMIC_TYPE_ALTNAME);
         if (newEntry->name == NULL)
-                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for AltName name entry");
 
         /* Copy alt name. We use memcpy() here instead of strcpy(), as altName may contain a
          * binary representation of an ip address containing zeros. That would break strcpy().
@@ -199,32 +200,33 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
         int ret = KRITIS3M_PKI_SUCCESS;
         DNS_entry* altNames = NULL;
 
-        if (request == NULL || metadata == NULL)
-                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+        if (request == NULL || metadata == NULL || metadata->commonName == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
 
         /* Initialize the certificate request structure */
         ret = wc_InitCert(&request->req);
         if (ret != 0)
-                ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
+                ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to initialize certificate request structure: %d", ret);
 
         /* Set metadata */
-        if (metadata->CN != NULL)
-                strncpy(request->req.subject.commonName, metadata->CN, CTC_NAME_SIZE);
+        if (metadata->commonName != NULL)
+                strncpy(request->req.subject.commonName, metadata->commonName, CTC_NAME_SIZE);
         else
                 strncpy(request->req.subject.commonName, "KRITIS3M PKI Cert", CTC_NAME_SIZE);
 
         strncpy(request->req.subject.country, SUBJECT_COUNTRY, CTC_NAME_SIZE);
-        // strncpy(request->req.subject.state, SUBJECT_STATE, CTC_NAME_SIZE);
-        // strncpy(request->req.subject.locality, SUBJECT_LOCALITY, CTC_NAME_SIZE);
-        if (metadata->O != NULL)
-                strncpy(request->req.subject.org, metadata->O, CTC_NAME_SIZE);
+        if (metadata->org != NULL)
+                strncpy(request->req.subject.org, metadata->org, CTC_NAME_SIZE);
         else
                 strncpy(request->req.subject.org, SUBJECT_ORG, CTC_NAME_SIZE);
 
-        if (metadata->OU != NULL)
-                strncpy(request->req.subject.unit, metadata->OU, CTC_NAME_SIZE);
+        if (metadata->unit != NULL)
+                strncpy(request->req.subject.unit, metadata->unit, CTC_NAME_SIZE);
         else
                 strncpy(request->req.subject.unit, SUBJECT_UNIT, CTC_NAME_SIZE);
+
+        // strncpy(request->req.subject.state, SUBJECT_STATE, CTC_NAME_SIZE);
+        // strncpy(request->req.subject.locality, SUBJECT_LOCALITY, CTC_NAME_SIZE);
         // strncpy(request->req.subject.email, SUBJECT_EMAIL, CTC_NAME_SIZE);
 
         /* Allocate DNS alt name objects */
@@ -235,7 +237,7 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
                 {
                         ret = addAltNameEntry(&altNames, altName, strlen(altName), ASN_DNS_TYPE);
                         if (ret < 0)
-                                ERROR_OUT(ret);
+                                ERROR_OUT(ret, "Failed to add DNS alt name entry");
 
                         altName = strtok(NULL, ";");
                 }
@@ -249,7 +251,7 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
                 {
                         ret = addAltNameEntry(&altNames, altName, strlen(altName), ASN_URI_TYPE);
                         if (ret < 0)
-                                ERROR_OUT(ret);
+                                ERROR_OUT(ret, "Failed to add URI alt name entry");
 
                         altName = strtok(NULL, ";");
                 }
@@ -264,12 +266,12 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
                         struct in_addr ipv4_addr;
                         ret = inet_aton(altName, &ipv4_addr);
                         if (ret == 0)
-                                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR, "Invalid IPv4 address: %s", altName);
 
                         ret = addAltNameEntry(&altNames, (char const*) &ipv4_addr.s_addr,
                                               sizeof(ipv4_addr.s_addr), ASN_IP_TYPE);
                         if (ret < 0)
-                                ERROR_OUT(ret);
+                                ERROR_OUT(ret, "Failed to add IP alt name entry");
 
                         altName = strtok(NULL, ";");
                 }
@@ -284,7 +286,7 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
                         request->req.altNamesSz = ret;
                 }
                 else
-                        ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to encode alt names: %d", ret);
         }
 
         ret = KRITIS3M_PKI_SUCCESS;
@@ -302,7 +304,7 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
         int ret = KRITIS3M_PKI_SUCCESS;
 
         if (request == NULL || key == NULL)
-                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
 
         if (key->init == true)
         {
@@ -312,12 +314,12 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         /* Get output size */
                         ret = wc_RsaKeyToPublicDer(&key->key.rsa, NULL, 0);
                         if (ret <= 0)
-                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to get RSA public key size: %d", ret);
 
                         /* Allocate buffer */
                         request->altPubKeyDer = (uint8_t*) malloc(ret);
                         if (request->altPubKeyDer == NULL)
-                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for RSA public key");
 
                         /* Export public key */
                         ret = wc_RsaKeyToPublicDer(&key->key.rsa, request->altPubKeyDer,
@@ -328,12 +330,12 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         /* Get output size */
                         ret = wc_EccPublicKeyToDer(&key->key.ecc, NULL, 0, 1);
                         if (ret <= 0)
-                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to get ECC public key size: %d", ret);
 
                         /* Allocate buffer */
                         request->altPubKeyDer = (uint8_t*) malloc(ret);
                         if (request->altPubKeyDer == NULL)
-                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for ECC public key");
 
                         ret = wc_EccPublicKeyToDer(&key->key.ecc, request->altPubKeyDer,
                                                    (word32)ret, 1);
@@ -344,12 +346,12 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         /* Get output size */
                         ret = wc_Dilithium_PublicKeyToDer(&key->key.dilithium, NULL, 0, 1);
                         if (ret <= 0)
-                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to get Dilithium public key size: %d", ret);
 
                         /* Allocate buffer */
                         request->altPubKeyDer = (uint8_t*) malloc(ret);
                         if (request->altPubKeyDer == NULL)
-                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for Dilithium public key");
 
                         /* Export public key */
                         ret = wc_Dilithium_PublicKeyToDer(&key->key.dilithium, request->altPubKeyDer,
@@ -360,12 +362,12 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         /* Get output size */
                         ret = wc_Falcon_PublicKeyToDer(&key->key.falcon, NULL, 0, 1);
                         if (ret <= 0)
-                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to get Falcon public key size: %d", ret);
 
                         /* Allocate buffer */
                         request->altPubKeyDer = (uint8_t*) malloc(ret);
                         if (request->altPubKeyDer == NULL)
-                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for Falcon public key");
 
                         /* Export public key */
                         ret = wc_Falcon_PublicKeyToDer(&key->key.falcon, request->altPubKeyDer,
@@ -376,12 +378,12 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         /* Get output size */
                         ret = wc_Ed25519PublicKeyToDer(&key->key.ed25519, NULL, 0, 1);
                         if (ret <= 0)
-                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to get Ed25519 public key size: %d", ret);
 
                         /* Allocate buffer */
                         request->altPubKeyDer = (uint8_t*) malloc(ret);
                         if (request->altPubKeyDer == NULL)
-                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for Ed25519 public key");
 
                         /* Export public key */
                         ret = wc_Ed25519PublicKeyToDer(&key->key.ed25519, request->altPubKeyDer,
@@ -392,12 +394,12 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         /* Get output size */
                         ret = wc_Ed448PublicKeyToDer(&key->key.ed448, NULL, 0, 1);
                         if (ret <= 0)
-                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to get Ed448 public key size: %d", ret);
 
                         /* Allocate buffer */
                         request->altPubKeyDer = (uint8_t*) malloc(ret);
                         if (request->altPubKeyDer == NULL)
-                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for Ed448 public key");
 
                         /* Export public key */
                         ret = wc_Ed448PublicKeyToDer(&key->key.ed448, request->altPubKeyDer,
@@ -405,41 +407,41 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                 }
 
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to export public key: %d", ret);
 
                 /* Store public key in CSR */
                 ret = wc_SetCustomExtension(&request->req, 0,
                                             SubjectAltPublicKeyInfoExtension,
                                             request->altPubKeyDer, ret);
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_EXT_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_CSR_EXT_ERROR, "Failed to store alt public key in CSR: %d", ret);
 
                 /* Get OID of signature algorithm */
                 request->altSigAlg = getSigAlgForKey(key);
                 if (request->altSigAlg <= 0)
-                        ERROR_OUT(request->altSigAlg);
+                        ERROR_OUT(request->altSigAlg, "Failed to get signature algorithm for key");
 
                 /* Get size of encoded signature algorithm */
                 ret = SetAlgoID(request->altSigAlg, NULL, oidSigType, 0);
                 if (ret <= 0)
-                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to get size of signature algorithm: %d", ret);
 
                 /* Allocate memory */
                 request->altSigAlgDer = (uint8_t*) malloc(ret);
                 if (request->altSigAlgDer == NULL)
-                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for signature algorithm");
 
                 /* Encode signature algorithm */
                 ret = SetAlgoID(request->altSigAlg, request->altSigAlgDer, oidSigType, 0);
                 if (ret <= 0)
-                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to encode alt signature algorithm: %d", ret);
 
                 /* Store signature algorithm in CSR */
                 ret = wc_SetCustomExtension(&request->req, 0,
                                             AltSignatureAlgorithmExtension,
                                             request->altSigAlgDer, ret);
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_EXT_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_CSR_EXT_ERROR, "Failed to store alt signature algorithm in CSR: %d", ret);
         }
 
         ret = KRITIS3M_PKI_SUCCESS;
@@ -464,24 +466,24 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
         bool decodedCertInit = false;
 
         if (request == NULL || key == NULL || buffer == NULL || buffer_size == NULL)
-                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR);
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
 
         /* Allocate temporary buffers */
         uint8_t* derBuffer = (uint8_t*) malloc(LARGE_TEMP_SZ);
         size_t derSize = LARGE_TEMP_SZ;
 
         if (derBuffer == NULL)
-                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                return KRITIS3M_PKI_MEMORY_ERROR;
 
         /* Init RNG */
         ret = wc_InitRng(&rng);
         if (ret != 0)
-                ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
+                ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to initialize RNG: %d", ret);
 
         /* Set primary signature type */
         request->req.sigType = getSigAlgForKey(&key->primaryKey);
         if (request->req.sigType <= 0)
-                ERROR_OUT(request->req.sigType);
+                ERROR_OUT(request->req.sigType, "Failed to get signature algorithm for key");
 
         /* Check if have to create an alternative signature */
         if (key->alternativeKey.init == true)
@@ -489,20 +491,20 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
                 /* Encode the alternative public key and signature algorithm */
                 ret = encodeAltKeyData(request, &key->alternativeKey);
                 if (ret < 0)
-                        ERROR_OUT(ret);
+                        ERROR_OUT(ret, "Failed to encode alternative key data");
 
                 /* Generate a temporary CSR to generate the TBS from it */
                 ret = wc_MakeCertReq_ex(&request->req, derBuffer, LARGE_TEMP_SZ,
                                         key->primaryKey.certKeyType, &key->primaryKey.key);
                 if (ret <= 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to generate temporary CSR: %d", ret);
 
                 /* Sign temporary CSR. Only needed so wc_ParseCert() doesn't fail down below. */
                 ret = wc_SignCert_ex(request->req.bodySz, request->req.sigType,
                                 derBuffer, LARGE_TEMP_SZ, key->primaryKey.certKeyType,
                                 &key->primaryKey.key, &rng);
                 if (ret <= 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_SIGN_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_CSR_SIGN_ERROR, "Failed to sign temporary CSR: %d", ret);
 
                 derSize = ret;
 
@@ -511,18 +513,18 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
                 ret = ParseCert(&decodedCert, CERTREQ_TYPE, NO_VERIFY, NULL);
                 decodedCertInit = true;
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to decode temporary CSR: %d", ret);
 
                 ret = wc_GeneratePreTBS(&decodedCert, derBuffer, LARGE_TEMP_SZ);
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to generate preTBS: %d", ret);
 
                 derSize = ret;
 
                 /* Allocate buffer for alternative signature */
                 request->altSigValDer = (uint8_t*) malloc(LARGE_TEMP_SZ);
                 if (request->altSigValDer == NULL)
-                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for alternative signature");
 
                 /* Generate the alternative signature. */
                 ret = wc_MakeSigWithBitStr(request->altSigValDer, LARGE_TEMP_SZ,
@@ -530,7 +532,7 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
                                            derSize, key->alternativeKey.certKeyType,
                                            &key->alternativeKey.key, &rng);
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_SIGN_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_CSR_SIGN_ERROR, "Failed to generate alternative signature: %d", ret);
 
                 /* Store the alternative signature in the new certificate */
                 ret = wc_SetCustomExtension(&request->req, 0,
@@ -538,21 +540,21 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
                                             request->altSigValDer,
                                             ret);
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_EXT_ERROR);
+                        ERROR_OUT(KRITIS3M_PKI_CSR_EXT_ERROR, "Failed to store alt signature value in CSR: %d", ret);
         }
 
         /* Generate the final CSR */
         ret = wc_MakeCertReq_ex(&request->req, derBuffer, LARGE_TEMP_SZ,
                                 key->primaryKey.certKeyType, &key->primaryKey.key);
         if (ret <= 0)
-                ERROR_OUT(KRITIS3M_PKI_CSR_ERROR);
+                ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to generate CSR: %d", ret);
 
         /* Sign the CSR */
         ret = wc_SignCert_ex(request->req.bodySz, request->req.sigType,
                              derBuffer, LARGE_TEMP_SZ, key->primaryKey.certKeyType,
                              &key->primaryKey.key, &rng);
         if (ret <= 0)
-                ERROR_OUT(KRITIS3M_PKI_CSR_SIGN_ERROR);
+                ERROR_OUT(KRITIS3M_PKI_CSR_SIGN_ERROR, "Failed to sign CSR: %d", ret);
 
         derSize = ret;
 
@@ -561,7 +563,7 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
         if (ret > 0)
                 *buffer_size = ret;
         else
-                ERROR_OUT(KRITIS3M_PKI_PEM_ENCODE_ERROR);
+                ERROR_OUT(KRITIS3M_PKI_PEM_ENCODE_ERROR, "Failed to convert CSR to PEM: %d", ret);
 
         ret = KRITIS3M_PKI_SUCCESS;
 

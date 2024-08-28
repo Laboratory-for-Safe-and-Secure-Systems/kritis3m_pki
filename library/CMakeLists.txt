@@ -56,6 +56,7 @@ endif(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
 # Define the common library
 add_library(kritis3m_pki_common
         ${CMAKE_CURRENT_SOURCE_DIR}/src/kritis3m_pki_common.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/kritis3m_pki_logging.c
 )
 target_include_directories(kritis3m_pki_common PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

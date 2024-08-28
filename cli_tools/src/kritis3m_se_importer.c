@@ -19,14 +19,15 @@ LOG_MODULE_CREATE(kritis3m_se_importer);
 
 static const struct option cli_options[] =
 {
-        { "key",         required_argument, 0, 'a' },
-        { "keyLabel",    required_argument, 0, 'b' },
-        { "altKey",      required_argument, 0, 'c' },
-        { "altKeyLabel", required_argument, 0, 'd' },
-        { "middleware",  required_argument, 0, 'e' },
-        { "slot",        required_argument, 0, 'f' },
-        { "verbose",     no_argument,       0, 'v' },
-        { "help",        no_argument,       0, 'h' },
+        { "key",            required_argument, 0, 0x01 },
+        { "key_label",      required_argument, 0, 0x02 },
+        { "alt_key",        required_argument, 0, 0x03 },
+        { "alt_key_label",  required_argument, 0, 0x04 },
+        { "middleware",     required_argument, 0, 0x05 },
+        { "slot",           required_argument, 0, 0x06 },
+        { "verbose",        no_argument,       0, 'v'  },
+        { "debug",          no_argument,       0, 'd'  },
+        { "help",           no_argument,       0, 'h'  },
         { NULL, 0, NULL, 0}
 };
 
@@ -34,22 +35,45 @@ static const struct option cli_options[] =
 void print_help(char *prog_name)
 {
         printf("Usage: %s [OPTIONS]\r\n", prog_name);
-        printf("Arguments:\n");
         printf("\nKey file input:\r\n");
-        printf("  --key <file>             Path to the primary key in PEM format\r\n");
-        printf("  --altKey <file>          Path to the alternative key in PEM format\r\n");
+        printf("  --key <file>                  Path to the primary key in PEM format\r\n");
+        printf("  --alt_key <file>              Path to the alternative key in PEM format\r\n");
 
         printf("\nPKCS#11 key labels:\r\n");
-        printf("  --keyLabel <label>       Label of the primary key in PKCS#11\r\n");
-        printf("  --altKeyLabel <label>    Label of the alternative key in PKCS#11\r\n");
+        printf("  --key_label <label>           Label of the primary key in PKCS#11\r\n");
+        printf("  --alt_key_label <label>       Label of the alternative key in PKCS#11\r\n");
 
         printf("\nSecure Element:\r\n");
-        printf("  --middleware <file>      Path to the secure element middleware\r\n");
-        printf("  --slot <id>              Slot id of the secure element containing the issuer keys (default is first available)\r\n");
+        printf("  --middleware <file>           Path to the secure element middleware\r\n");
+        printf("  --slot <id>                   Slot id of the secure element containing the issuer keys (default is first available)\r\n");
 
         printf("\nGeneral:\r\n");
-        printf("  --verbose               Enable verbose output\r\n");
-        printf("  --help                  Print this help\r\n");
+        printf("  --verbose                     Enable verbose output\r\n");
+        printf("  --debug                       Enable debug output\r\n");
+        printf("  --help                        Print this help\r\n");
+}
+
+
+static void pki_lib_log_callback(int32_t level, char const* message)
+{
+        switch (level)
+        {
+        case KRITIS3M_PKI_LOG_LEVEL_ERR:
+                LOG_ERROR("%s", message);
+                break;
+        case KRITIS3M_PKI_LOG_LEVEL_WRN:
+                LOG_WARN("%s", message);
+                break;
+        case KRITIS3M_PKI_LOG_LEVEL_INF:
+                LOG_INFO("%s", message);
+                break;
+        case KRITIS3M_PKI_LOG_LEVEL_DBG:
+                LOG_DEBUG("%s", message);
+                break;
+        default:
+                LOG_ERROR("unknown log level %d: %s", level, message);
+                break;
+        }
 }
 
 
@@ -95,26 +119,29 @@ int main(int argc, char** argv)
 
                 switch (result)
                 {
-                        case 'a':
+                        case 0x01: /* key */
                                 keyPath = optarg;
                                 break;
-                        case 'b':
+                        case 0x02: /* key_label */
                                 keyLabel = optarg;
                                 break;
-                        case 'c':
+                        case 0x03: /* alt_key */
                                 altKeyPath = optarg;
                                 break;
-                        case 'd':
+                        case 0x04: /* alt_key_label */
                                 altKeyLabel = optarg;
                                 break;
-                        case 'e':
+                        case 0x05: /* middleware */
                                 middlewarePath = optarg;
                                 break;
-                        case 'f':
+                        case 0x06: /* slot */
                                 slot = strtol(optarg, NULL, 10);
                                 break;
                         case 'v':
                                 LOG_LVL_SET(LOG_LVL_INFO);
+                                break;
+                        case 'd':
+                                LOG_LVL_SET(LOG_LVL_DEBUG);
                                 break;
                         case 'h':
                                 print_help(argv[0]);
@@ -131,6 +158,16 @@ int main(int argc, char** argv)
         buffer = (uint8_t*) malloc(bufferSize);
         if (buffer == NULL)
                 ERROR_OUT("unable to allocate buffer");
+
+        /* Initialize the PKI libraries */
+        krits3m_pki_configuration pki_lib_config = {
+                .logging_enabled = true,
+                .log_level = LOG_LVL_GET(),
+                .custom_log_callback = pki_lib_log_callback,
+        };
+        ret = kritis3m_pki_init(&pki_lib_config);
+        if (ret != KRITIS3M_PKI_SUCCESS)
+                ERROR_OUT("unable to initialize PKI libraries: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
         /* Initialize the PKCS#11 support */
         if (middlewarePath != NULL)

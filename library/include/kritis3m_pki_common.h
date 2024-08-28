@@ -32,6 +32,67 @@ enum KRITIS3M_PKI_ERROR_CODES {
 };
 
 
+/* Available Log levels. Default is ERR. */
+enum KRITIS3M_PKI_LOG_LEVEL
+{
+    KRITIS3M_PKI_LOG_LEVEL_ERR   = 1U,
+    KRITIS3M_PKI_LOG_LEVEL_WRN   = 2U,
+    KRITIS3M_PKI_LOG_LEVEL_INF   = 3U,
+    KRITIS3M_PKI_LOG_LEVEL_DBG   = 4U,
+};
+
+
+/* Function pointer type for custom logging callbacks. */
+typedef void (*krits3m_pki_custom_log_callback)(int32_t level, char const* message);
+
+
+/* Data structure for the library configuration */
+typedef struct
+{
+        bool logging_enabled;
+        int32_t log_level;
+        krits3m_pki_custom_log_callback custom_log_callback;
+}
+krits3m_pki_configuration;
+
+
+/* Initialize the KRITIS3M PKI libraries.
+ *
+ * Parameter is a pointer to a filled krits3m_pki_configuration structure.
+ *
+ * Returns KRITIS3M_PKI_SUCCESS on success, negative error code in case of an error
+ * (error message is logged to the console).
+ */
+int kritis3m_pki_init(krits3m_pki_configuration const* config);
+
+
+/* Enable/disable logging infrastructure.
+ *
+ * Parameter is a boolean value to enable or disable logging.
+ *
+ * Returns KRITIS3M_PKI_SUCCESS on success, negative error code in case of an error.
+ */
+int kritis3m_pki_enable_logging(bool enable);
+
+
+/* Set a custom logging callback.
+ *
+ * Parameter is a function pointer to the custom logging callback.
+ *
+ * Returns KRITIS3M_PKI_SUCCESS on success, negative error code in case of an error.
+ */
+int kritis3m_pki_set_custom_log_callback(krits3m_pki_custom_log_callback new_callback);
+
+
+/* Update the log level.
+ *
+ * Parameter is the new log level.
+ *
+ * Returns KRITIS3M_PKI_SUCCESS on success, negative error code in case of an error.
+ */
+int kritis3m_pki_set_log_level(int32_t new_log_level);
+
+
 /* Print a human-readable error message for the provided error code. */
 char const* kritis3m_pki_error_message(int error_code);
 
