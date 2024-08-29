@@ -214,20 +214,20 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
         else
                 strncpy(request->req.subject.commonName, "KRITIS3M PKI Cert", CTC_NAME_SIZE);
 
-        strncpy(request->req.subject.country, SUBJECT_COUNTRY, CTC_NAME_SIZE);
         if (metadata->org != NULL)
                 strncpy(request->req.subject.org, metadata->org, CTC_NAME_SIZE);
-        else
-                strncpy(request->req.subject.org, SUBJECT_ORG, CTC_NAME_SIZE);
 
         if (metadata->unit != NULL)
                 strncpy(request->req.subject.unit, metadata->unit, CTC_NAME_SIZE);
-        else
-                strncpy(request->req.subject.unit, SUBJECT_UNIT, CTC_NAME_SIZE);
 
-        // strncpy(request->req.subject.state, SUBJECT_STATE, CTC_NAME_SIZE);
-        // strncpy(request->req.subject.locality, SUBJECT_LOCALITY, CTC_NAME_SIZE);
-        // strncpy(request->req.subject.email, SUBJECT_EMAIL, CTC_NAME_SIZE);
+        if (metadata->country != NULL)
+                strncpy(request->req.subject.country, metadata->country, CTC_NAME_SIZE);
+        else
+                strncpy(request->req.subject.state, SUBJECT_COUNTRY, CTC_NAME_SIZE);
+
+        if (metadata->state != NULL)
+                strncpy(request->req.subject.state, metadata->state, CTC_NAME_SIZE);
+
 
         /* Allocate DNS alt name objects */
         if (metadata->altNamesDNS != NULL)

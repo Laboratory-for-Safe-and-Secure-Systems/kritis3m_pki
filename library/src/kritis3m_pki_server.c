@@ -490,7 +490,7 @@ int outputCert_configureAsCA(OutputCert* outputCert)
         outputCert->cert.isCA = 1;
 
         /* Limit key usage to only sign new certificates */
-        int ret = wc_SetKeyUsage(&outputCert->cert, "keyCertSign");
+        int ret = wc_SetKeyUsage(&outputCert->cert, "keyCertSign,cRLSign");
         if (ret != 0)
                 return KRITIS3M_PKI_CERT_ERROR;
 

@@ -38,6 +38,8 @@ static const struct option cli_options[] =
         { "slot_issuer_key",    required_argument, 0, 0x16 },
         { "slot_entity_key",    required_argument, 0, 0x17 },
         { "self_signed_cert",   no_argument,       0, 0x18 },
+        { "country",            required_argument, 0, 0x19 },
+        { "state",              required_argument, 0, 0x1A },
         { "verbose",            no_argument,       0, 'v'  },
         { "debug",              no_argument,       0, 'd'  },
         { "help",               no_argument,       0, 'h'  },
@@ -155,6 +157,12 @@ int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_ge
                         case 0x18: /* self_signed_cert */
                                 generation_info->selfSignCert = true;
                                 break;
+                        case 0x19: /* country */
+                                metadata->certMetadata.country = optarg;
+                                break;
+                        case 0x1A: /* state */
+                                metadata->certMetadata.state = optarg;
+                                break;
                         case 'v':
                                 app_config->log_level = LOG_LVL_INFO;
                                 LOG_LVL_SET(LOG_LVL_INFO);
@@ -204,6 +212,8 @@ static void set_defaults(application_config* app_config, pki_paths* paths, pki_g
         /* Metadata */
         metadata->enableCA = false;
         metadata->certMetadata.commonName = NULL;
+        metadata->certMetadata.country = NULL;
+        metadata->certMetadata.state = NULL;
         metadata->certMetadata.org = NULL;
         metadata->certMetadata.unit = NULL;
         metadata->certMetadata.altNamesDNS = NULL;
@@ -249,6 +259,8 @@ static void print_help(char const* name)
 
         printf("\nMetadata:\n");
         printf("  --common_name <string>        Common Name (CN) for the certificate/CSR\n");
+        printf("  --country <string>            Country (C) for the certificate/CSR\n");
+        printf("  --state <string>              State (ST) for the certificate/CSR\n");
         printf("  --org <string>                Organization (O) for the certificate/CSR\n");
         printf("  --unit <string>               Organizational Unit (OU) for the certificate/CSR\n");
         printf("  --alt_names_DNS <string>      SAN DNS entries for the certificate/CSR (separated by ; and wrappend in \")\n");

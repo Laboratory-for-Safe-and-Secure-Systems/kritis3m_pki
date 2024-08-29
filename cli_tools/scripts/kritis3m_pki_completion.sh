@@ -30,6 +30,8 @@
 #
 # Metadata:
 #   --common_name <string>        Common Name (CN) for the certificate/CSR
+#   --country <string>            Country (C) for the certificate/CSR
+#   --state <string>              State (ST) for the certificate/CSR
 #   --org <string>                Organization (O) for the certificate/CSR
 #   --unit <string>               Organizational Unit (OU) for the certificate/CSR
 #   --alt_names_DNS <string>      SAN DNS entries for the certificate/CSR (separated by ; and wrappend in ")
@@ -61,7 +63,7 @@ _kritis3m_pki_completions() {
     opts="--issuer_key --issuer_alt_key --entity_key --entity_alt_key --issuer_cert --csr_in \
           --gen_key --gen_alt_key \
           --cert_out --csr_out --key_out --alt_key_out \
-          --common_name --org --unit --alt_names_DNS --alt_names_URI --alt_names_IP --validity --CA_cert --self_signed_cert \
+          --common_name --country --state --org --unit --alt_names_DNS --alt_names_URI --alt_names_IP --validity --CA_cert --self_signed_cert \
           --middleware --slot_issuer_key --slot_entity_key \
           --verbose --debug --help"
 
@@ -70,7 +72,7 @@ _kritis3m_pki_completions() {
             _filedir
             return 0
             ;;
-        --common_name|--org|--unit|--alt_names_DNS|--alt_names_URI|--alt_names_IP|--validity|--slot_issuer_key|--slot_entity_key)
+        --common_name|--country|--state|--org|--unit|--alt_names_DNS|--alt_names_URI|--alt_names_IP|--validity|--slot_issuer_key|--slot_entity_key)
             # No file completion needed for these options, just suggest an empty list
             COMPREPLY=()
             return 0

@@ -11,6 +11,8 @@
 typedef struct
 {
         char const* commonName;
+        char const* country;
+        char const* state;
         char const* org;
         char const* unit;
         char const* altNamesDNS;
