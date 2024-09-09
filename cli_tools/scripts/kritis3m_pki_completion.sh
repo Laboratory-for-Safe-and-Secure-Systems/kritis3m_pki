@@ -77,7 +77,7 @@ _kritis3m_pki_completions() {
             COMPREPLY=()
             return 0
             ;;
-        --gen_kKey|--gen_alt_key)
+        --gen_key|--gen_alt_key)
             algos="rsa2048 rsa3072 rsa4096 secp256 secp384 secp521 ed22519 ed448 mldsa44 mldsa65 mldsa87"
             COMPREPLY=( $(compgen -W "${algos}" -- ${cur}) )
             return 0
