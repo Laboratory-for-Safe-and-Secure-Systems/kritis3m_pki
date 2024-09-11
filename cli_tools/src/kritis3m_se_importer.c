@@ -112,7 +112,7 @@ int main(int argc, char** argv)
 
         while (true)
         {
-                int result = getopt_long(argc, argv, "a:b:c:d:e:f:vh", cli_options, &index);
+                int result = getopt_long(argc, argv, "vdh", cli_options, &index);
 
                 if (result == -1)
                         break; /* end of list */
