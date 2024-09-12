@@ -55,7 +55,7 @@ int main(int argc, char** argv)
         pki_paths paths = {0};
         pki_generation_info gen_info = {0};
         pki_metadata metadata = {0};
-        pki_secure_element secure_element = {0};
+        pki_pkcs11 pkcs11 = {0};
 
         PrivateKey* issuerKey = NULL;
         IssuerCert* issuerCert = NULL;
@@ -66,7 +66,7 @@ int main(int argc, char** argv)
 
         /* Parse the command line arguments */
         ret = parse_cli_arguments(&app_config, &paths, &gen_info, &metadata,
-                                  &secure_element, argc, argv);
+                                  &pkcs11, argc, argv);
         LOG_LVL_SET(app_config.log_level);
         if (ret != 0)
                 ERROR_OUT("unable to parse command line arguments");
@@ -86,16 +86,6 @@ int main(int argc, char** argv)
         if (ret != KRITIS3M_PKI_SUCCESS)
                 ERROR_OUT("unable to initialize PKI libraries: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
-        /* Check if we want to use a secure element */
-        if (secure_element.middlewarePath != NULL)
-        {
-                LOG_INFO("Initializing PKCS#11 library using middleware from \"%s\"", secure_element.middlewarePath);
-
-                ret = kritis3m_pki_init_pkcs11(secure_element.middlewarePath);
-                if (ret != KRITIS3M_PKI_SUCCESS)
-                        ERROR_OUT("unable to initialize PKCS#11 middleware: %s (%d)", kritis3m_pki_error_message(ret), ret);
-        }
-
         /* Load the entity key */
         entityKey = privateKey_new();
         if (entityKey == NULL)
@@ -110,15 +100,17 @@ int main(int argc, char** argv)
                                  paths.entityKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
 
                         /* Initialize the related PKCS#11 token */
-                        secure_element.entityTokenDeviceId = kritis3m_pki_init_entity_token(secure_element.slotEntityKey,
-                                                                                            NULL, 0);
-                        if (secure_element.entityTokenDeviceId < KRITIS3M_PKI_SUCCESS)
+                        pkcs11.entityModule.deviceId = kritis3m_pki_init_entity_token(pkcs11.entityModule.path,
+                                                                                      pkcs11.entityModule.slot,
+                                                                                      (uint8_t const*)pkcs11.entityModule.pin,
+                                                                                      pkcs11.entityModule.pinLen);
+                        if (pkcs11.entityModule.deviceId < KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to initialize entity token: %s (%d)",
-                                          kritis3m_pki_error_message(secure_element.entityTokenDeviceId),
-                                          secure_element.entityTokenDeviceId);
+                                          kritis3m_pki_error_message(pkcs11.entityModule.deviceId),
+                                          pkcs11.entityModule.deviceId);
 
                         /* Set the external reference */
-                        ret = privateKey_setExternalRef(entityKey, secure_element.entityTokenDeviceId,
+                        ret = privateKey_setExternalRef(entityKey, pkcs11.entityModule.deviceId,
                                                         paths.entityKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to set external reference for entity key: %s (%d)",
@@ -150,19 +142,21 @@ int main(int argc, char** argv)
                                          paths.entityAltKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
 
                                 /* Check if the token is not yet initialized */
-                                if (secure_element.entityTokenDeviceId < 0)
+                                if (pkcs11.entityModule.deviceId < 0)
                                 {
                                         /* Initialize the related PKCS#11 token */
-                                        secure_element.entityTokenDeviceId = kritis3m_pki_init_entity_token(secure_element.slotEntityKey,
-                                                                                                            NULL, 0);
-                                        if (secure_element.entityTokenDeviceId < KRITIS3M_PKI_SUCCESS)
+                                        pkcs11.entityModule.deviceId = kritis3m_pki_init_entity_token(pkcs11.entityModule.path,
+                                                                                      pkcs11.entityModule.slot,
+                                                                                      (uint8_t const*)pkcs11.entityModule.pin,
+                                                                                      pkcs11.entityModule.pinLen);
+                                        if (pkcs11.entityModule.deviceId < KRITIS3M_PKI_SUCCESS)
                                                 ERROR_OUT("unable to initialize entity token: %s (%d)",
-                                                          kritis3m_pki_error_message(secure_element.entityTokenDeviceId),
-                                                          secure_element.entityTokenDeviceId);
+                                                          kritis3m_pki_error_message(pkcs11.entityModule.deviceId),
+                                                          pkcs11.entityModule.deviceId);
                                 }
 
                                 /* Set the external reference */
-                                ret = privateKey_setAltExternalRef(entityKey, secure_element.entityTokenDeviceId,
+                                ret = privateKey_setAltExternalRef(entityKey, pkcs11.entityModule.deviceId,
                                                                    paths.entityKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
                                         ERROR_OUT("unable to set external reference for entity alt key: %s (%d)",
@@ -267,15 +261,17 @@ int main(int argc, char** argv)
                                  paths.issuerKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
 
                         /* Initialize the related PKCS#11 token */
-                        secure_element.issuerTokenDeviceId = kritis3m_pki_init_issuer_token(secure_element.slotIssuerKey,
-                                                                                            NULL, 0);
-                        if (secure_element.issuerTokenDeviceId < KRITIS3M_PKI_SUCCESS)
+                        pkcs11.issuerModule.deviceId = kritis3m_pki_init_issuer_token(pkcs11.issuerModule.path,
+                                                                                      pkcs11.issuerModule.slot,
+                                                                                      (uint8_t const*)pkcs11.issuerModule.pin,
+                                                                                      pkcs11.issuerModule.pinLen);
+                        if (pkcs11.issuerModule.deviceId < KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to initialize issuer token: %s (%d)",
-                                          kritis3m_pki_error_message(secure_element.issuerTokenDeviceId),
-                                          secure_element.issuerTokenDeviceId);
+                                          kritis3m_pki_error_message(pkcs11.issuerModule.deviceId),
+                                          pkcs11.issuerModule.deviceId);
 
                         /* Set the external reference */
-                        ret = privateKey_setExternalRef(issuerKey, secure_element.issuerTokenDeviceId,
+                        ret = privateKey_setExternalRef(issuerKey, pkcs11.issuerModule.deviceId,
                                                         paths.issuerKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to set external reference for issuer key: %s (%d)",
@@ -307,19 +303,21 @@ int main(int argc, char** argv)
                                          paths.issuerAltKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
 
                                 /* Check if the token is not yet initialized */
-                                if (secure_element.issuerTokenDeviceId < 0)
+                                if (pkcs11.issuerModule.deviceId < 0)
                                 {
                                         /* Initialize the related PKCS#11 token */
-                                        secure_element.issuerTokenDeviceId = kritis3m_pki_init_issuer_token(secure_element.slotIssuerKey,
-                                                                                                            NULL, 0);
-                                        if (secure_element.issuerTokenDeviceId < KRITIS3M_PKI_SUCCESS)
+                                        pkcs11.issuerModule.deviceId = kritis3m_pki_init_issuer_token(pkcs11.issuerModule.path,
+                                                                                      pkcs11.issuerModule.slot,
+                                                                                      (uint8_t const*)pkcs11.issuerModule.pin,
+                                                                                      pkcs11.issuerModule.pinLen);
+                                        if (pkcs11.issuerModule.deviceId < KRITIS3M_PKI_SUCCESS)
                                                 ERROR_OUT("unable to initialize issuer token: %s (%d)",
-                                                          kritis3m_pki_error_message(secure_element.issuerTokenDeviceId),
-                                                          secure_element.issuerTokenDeviceId);
+                                                          kritis3m_pki_error_message(pkcs11.issuerModule.deviceId),
+                                                          pkcs11.issuerModule.deviceId);
                                 }
 
                                 /* Set the external reference */
-                                ret = privateKey_setAltExternalRef(issuerKey, secure_element.issuerTokenDeviceId,
+                                ret = privateKey_setAltExternalRef(issuerKey, pkcs11.issuerModule.deviceId,
                                                                    paths.issuerAltKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
                                         ERROR_OUT("unable to set external reference for issuer alt key: %s (%d)",

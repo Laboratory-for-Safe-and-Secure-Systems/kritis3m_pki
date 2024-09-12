@@ -34,12 +34,15 @@ static const struct option cli_options[] =
         { "gen_alt_key",        required_argument, 0, 0x12 },
         { "key_out",            required_argument, 0, 0x13 },
         { "alt_key_out",        required_argument, 0, 0x14 },
-        { "middleware",         required_argument, 0, 0x15 },
-        { "slot_issuer_key",    required_argument, 0, 0x16 },
-        { "slot_entity_key",    required_argument, 0, 0x17 },
-        { "self_signed_cert",   no_argument,       0, 0x18 },
-        { "country",            required_argument, 0, 0x19 },
-        { "state",              required_argument, 0, 0x1A },
+        { "p11_issuer_module",  required_argument, 0, 0x15 },
+        { "p11_issuer_slot",    required_argument, 0, 0x16 },
+        { "p11_issuer_pin",     required_argument, 0, 0x17 },
+        { "p11_entity_module",  required_argument, 0, 0x18 },
+        { "p11_entity_slot",    required_argument, 0, 0x19 },
+        { "p11_entity_pin",     required_argument, 0, 0x1A },
+        { "self_signed_cert",   no_argument,       0, 0x1B },
+        { "country",            required_argument, 0, 0x1C },
+        { "state",              required_argument, 0, 0x1D },
         { "verbose",            no_argument,       0, 'v'  },
         { "debug",              no_argument,       0, 'd'  },
         { "help",               no_argument,       0, 'h'  },
@@ -48,7 +51,7 @@ static const struct option cli_options[] =
 
 
 static void set_defaults(application_config* app_config, pki_paths* paths, pki_generation_info* generation_info,
-                         pki_metadata* metadata, pki_secure_element* secure_element);
+                         pki_metadata* metadata, pki_pkcs11* pkcs11);
 static void print_help(char const* name);
 
 
@@ -57,10 +60,10 @@ static void print_help(char const* name);
  * Returns 0 on success, +1 in case the help was printed and -1 on failure (error is printed on console).
  */
 int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_generation_info* generation_info,
-                        pki_metadata* metadata, pki_secure_element* secure_element, size_t argc, char** argv)
+                        pki_metadata* metadata, pki_pkcs11* pkcs11, size_t argc, char** argv)
 {
         if ((app_config == NULL) || (paths == NULL) || (generation_info == NULL) ||
-            (metadata == NULL) || (secure_element == NULL))
+            (metadata == NULL) || (pkcs11 == NULL))
         {
                 LOG_ERROR("mandatory argument missing for parse_cli_arguments()");
                 return -1;
@@ -72,7 +75,7 @@ int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_ge
         }
 
         /* Set default values */
-        set_defaults(app_config, paths, generation_info, metadata, secure_element);
+        set_defaults(app_config, paths, generation_info, metadata, pkcs11);
 
         /* Parse CLI args */
         int index = 0;
@@ -145,22 +148,33 @@ int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_ge
                         case 0x14: /* alt_key_out */
                                 paths->entityAltKeyOutputPath = optarg;
                                 break;
-                        case 0x15: /* middleware */
-                                secure_element->middlewarePath = optarg;
+                        case 0x15: /* p11_issuer_module */
+                                pkcs11->issuerModule.path = optarg;
                                 break;
-                        case 0x16: /* slot_issuer_key */
-                                secure_element->slotIssuerKey = strtol(optarg, NULL, 10);
+                        case 0x16: /* p11_issuer_slot */
+                                pkcs11->issuerModule.slot = strtol(optarg, NULL, 10);
                                 break;
-                        case 0x17: /* slot_entity_key */
-                                secure_element->slotEntityKey = strtol(optarg, NULL, 10);
+                        case 0x17: /* p11_issuer_pin */
+                                pkcs11->issuerModule.pin = optarg;
+                                pkcs11->issuerModule.pinLen = strlen(optarg);
                                 break;
-                        case 0x18: /* self_signed_cert */
+                        case 0x18: /* p11_entity_module */
+                                pkcs11->entityModule.path = optarg;
+                                break;
+                        case 0x19: /* p11_entity_slot */
+                                pkcs11->entityModule.slot = strtol(optarg, NULL, 10);
+                                break;
+                        case 0x1A: /* p11_entity_pin */
+                                pkcs11->entityModule.pin = optarg;
+                                pkcs11->entityModule.pinLen = strlen(optarg);
+                                break;
+                        case 0x1B: /* self_signed_cert */
                                 generation_info->selfSignCert = true;
                                 break;
-                        case 0x19: /* country */
+                        case 0x1C: /* country */
                                 metadata->certMetadata.country = optarg;
                                 break;
-                        case 0x1A: /* state */
+                        case 0x1D: /* state */
                                 metadata->certMetadata.state = optarg;
                                 break;
                         case 'v':
@@ -187,7 +201,7 @@ int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_ge
 
 
 static void set_defaults(application_config* app_config, pki_paths* paths, pki_generation_info* generation_info,
-                         pki_metadata* metadata, pki_secure_element* secure_element)
+                         pki_metadata* metadata, pki_pkcs11* pkcs11)
 {
         /* Application config */
         app_config->log_level = LOG_LVL_WARN;
@@ -221,12 +235,18 @@ static void set_defaults(application_config* app_config, pki_paths* paths, pki_g
         metadata->certMetadata.altNamesIP = NULL;
         metadata->validity = 365;
 
-        /* Secure Element */
-        secure_element->middlewarePath = NULL;
-        secure_element->slotIssuerKey = -1;
-        secure_element->issuerTokenDeviceId = -1;
-        secure_element->slotEntityKey = -1;
-        secure_element->entityTokenDeviceId = -1;
+        /* PKCS#11 */
+        pkcs11->issuerModule.path = NULL;
+        pkcs11->issuerModule.slot = -1;
+        pkcs11->issuerModule.pin = NULL;
+        pkcs11->issuerModule.pinLen = 0;
+        pkcs11->issuerModule.deviceId = -1;
+
+        pkcs11->entityModule.path = NULL;
+        pkcs11->entityModule.slot = -1;
+        pkcs11->entityModule.pin = NULL;
+        pkcs11->entityModule.pinLen = 0;
+        pkcs11->entityModule.deviceId = -1;
 }
 
 
@@ -274,9 +294,14 @@ static void print_help(char const* name)
         printf("  When using a secure element for key storage, you have to supply the PKCS#11 key labels using the arguments\n");
         printf("  \"--issuerKey\", \"--issuerAltKey\", \"--entityKey\" and \"--entityAltKey\" prepending the string\n");
         printf("  \"%s\" followed by the key label.\n", PKCS11_LABEL_IDENTIFIER);
-        printf("  --middleware <file>           Path to the secure element middleware\r\n");
-        printf("  --slot_issuer_key <id>        Slot id of the secure element containing the issuer keys (default is first available)\r\n");
-        printf("  --slot_entity_key <id>        Slot id of the secure element containing the entity keys (default is first available)\r\n");
+        printf("  You can specify different PKCS#11 modules for the issuer and entity keys. For each, an individual slot\n");
+        printf("  number and User PIN can be specified. If no slot is given, the first available slot is used.\n");
+        printf("  --p11_issuer_module <path>    Path to the PKCS#11 module containing the issuer key\r\n");
+        printf("  --p11_issuer_slot <id>        Slot id of the PKCS#11 module for the issuer key\r\n");
+        printf("  --p11_issuer_pin <pin>        PIN for the PKCS#11 module containing the issuer key\r\n");
+        printf("  --p11_entity_module <path>    Path to the PKCS#11 module containing the entity key\r\n");
+        printf("  --p11_entity_slot <id>        Slot id of the PKCS#11 module for the entity key\r\n");
+        printf("  --p11_entity_pin <pin>        PIN for the PKCS#11 module containing the entity key\r\n");
 
         printf("\nGeneral:\n");
         printf("  --verbose                     Enable verbose output\n");

@@ -23,8 +23,9 @@ static const struct option cli_options[] =
         { "key_label",      required_argument, 0, 0x02 },
         { "alt_key",        required_argument, 0, 0x03 },
         { "alt_key_label",  required_argument, 0, 0x04 },
-        { "middleware",     required_argument, 0, 0x05 },
+        { "module_path",     required_argument, 0, 0x05 },
         { "slot",           required_argument, 0, 0x06 },
+        { "pin",            required_argument, 0, 0x07 },
         { "verbose",        no_argument,       0, 'v'  },
         { "debug",          no_argument,       0, 'd'  },
         { "help",           no_argument,       0, 'h'  },
@@ -44,8 +45,9 @@ void print_help(char *prog_name)
         printf("  --alt_key_label <label>       Label of the alternative key in PKCS#11\r\n");
 
         printf("\nSecure Element:\r\n");
-        printf("  --middleware <file>           Path to the secure element middleware\r\n");
+        printf("  --module_path <file>          Path to the PKCS#11 module library\r\n");
         printf("  --slot <id>                   Slot id of the secure element containing the issuer keys (default is first available)\r\n");
+        printf("  --pin <pin>                   PIN for the secure element\r\n");
 
         printf("\nGeneral:\r\n");
         printf("  --verbose                     Enable verbose output\r\n");
@@ -90,10 +92,12 @@ int main(int argc, char** argv)
         char const* keyLabel = NULL;
         char const* altKeyLabel = NULL;
 
-        /* Secure Element */
-        char const* middlewarePath = NULL;
+        /* PKCS#11 */
+        char const* modulePath = NULL;
+        char const* pin = NULL;
+        int pinSize = 0;
         int slot = -1;
-        int tokenDeviceId = -1;
+        int deviceId = -1;
 
 
         static const size_t bufferSize = 32 * 1024;
@@ -131,11 +135,15 @@ int main(int argc, char** argv)
                         case 0x04: /* alt_key_label */
                                 altKeyLabel = optarg;
                                 break;
-                        case 0x05: /* middleware */
-                                middlewarePath = optarg;
+                        case 0x05: /* module_path */
+                                modulePath = optarg;
                                 break;
                         case 0x06: /* slot */
                                 slot = strtol(optarg, NULL, 10);
+                                break;
+                        case 0x07: /* pin */
+                                pin = optarg;
+                                pinSize = strlen(pin);
                                 break;
                         case 'v':
                                 LOG_LVL_SET(LOG_LVL_INFO);
@@ -169,22 +177,11 @@ int main(int argc, char** argv)
         if (ret != KRITIS3M_PKI_SUCCESS)
                 ERROR_OUT("unable to initialize PKI libraries: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
-        /* Initialize the PKCS#11 support */
-        if (middlewarePath != NULL)
-        {
-                LOG_INFO("Initializing PKCS#11 library using middleware from \"%s\"", middlewarePath);
 
-                ret = kritis3m_pki_init_pkcs11(middlewarePath);
-                if (ret != KRITIS3M_PKI_SUCCESS)
-                        ERROR_OUT("unable to initialize PKCS#11 middleware: %s (%d)", kritis3m_pki_error_message(ret), ret);
-        }
-        else
-                ERROR_OUT("No PKCS#11 middleware provided");
-
-        /* Initialize the PKCS#11 token */
-        tokenDeviceId = kritis3m_pki_init_entity_token(slot, NULL, 0);
-        if (tokenDeviceId < KRITIS3M_PKI_SUCCESS)
-                ERROR_OUT("unable to initialize token: %s (%d)", kritis3m_pki_error_message(tokenDeviceId), tokenDeviceId);
+        /* Initialize the PKCS#11 module */
+        deviceId = kritis3m_pki_init_entity_token(modulePath, slot, (uint8_t const*)pin, pinSize);
+        if (deviceId < KRITIS3M_PKI_SUCCESS)
+                ERROR_OUT("unable to initialize token: %s (%d)", kritis3m_pki_error_message(deviceId), deviceId);
 
         /* Prepare the key */
         key = privateKey_new();
@@ -196,7 +193,7 @@ int main(int argc, char** argv)
         {
                 LOG_INFO("Using key label \"%s\"", keyLabel);
 
-                ret = privateKey_setExternalRef(key, tokenDeviceId, keyLabel);
+                ret = privateKey_setExternalRef(key, deviceId, keyLabel);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to set external reference for key: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
@@ -205,7 +202,7 @@ int main(int argc, char** argv)
                 {
                         LOG_INFO("Using alternative key label \"%s\"", altKeyLabel);
 
-                        ret = privateKey_setAltExternalRef(key, tokenDeviceId, altKeyLabel);
+                        ret = privateKey_setAltExternalRef(key, deviceId, altKeyLabel);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to set external reference for alt key: %s (%d)", kritis3m_pki_error_message(ret), ret);
                 }

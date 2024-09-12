@@ -4,11 +4,6 @@
 #include <string.h>
 
 
-/* File global variable for the PKCS#11 middleware interface */
-static Pkcs11Dev pkcs11_device;
-static bool pkcs11_initialized = false;
-
-
 /* Print a human-readable error message for the provided error code. */
 char const* kritis3m_pki_error_message(int error_code)
 {
@@ -77,39 +72,25 @@ int kritis3m_pki_init(krits3m_pki_configuration const* config)
 }
 
 
-/* Initialize the PKCS#11 support with given middleware library.
- *
- * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
- */
-int kritis3m_pki_init_pkcs11(char const* middleware_path)
-{
-        /* Initialize the PKCS#11 library */
-        int ret = wc_Pkcs11_Initialize(&pkcs11_device, middleware_path, NULL);
-        if (ret != 0)
-                return KRITIS3M_PKI_PKCS11_ERROR;
-
-        pkcs11_initialized = true;
-
-        return KRITIS3M_PKI_SUCCESS;
-}
-
-
 /* Internal helper method */
-int initPkcs11Token(Pkcs11Token* token, int slot_id, uint8_t const* pin, size_t pin_size, int device_id)
+int initPkcs11Token(Pkcs11Dev* device, Pkcs11Token* token, char const* path, int slot_id,
+                    uint8_t const* pin, size_t pin_size, int device_id)
 {
         int ret = 0;
 
         if (token == NULL)
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
 
-        if (pkcs11_initialized == false)
-                ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "PKCS#11 library not initialized");
+        /* Initialize the PKCS#11 library */
+        ret = wc_Pkcs11_Initialize(device, path, NULL);
+        if (ret != 0)
+                ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "PKCS#11 library initialization failed: %d", ret);
 
         /* Initialize the token */
         if (pin != NULL && pin_size > 0)
-                ret = wc_Pkcs11Token_Init(token, &pkcs11_device, slot_id, NULL, pin, pin_size);
+                ret = wc_Pkcs11Token_Init(token, device, slot_id, NULL, pin, pin_size);
         else
-                ret = wc_Pkcs11Token_Init_NoLogin(token, &pkcs11_device, slot_id, NULL);
+                ret = wc_Pkcs11Token_Init_NoLogin(token, device, slot_id, NULL);
 
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "PKCS#11 token initialization failed: %d", ret);
@@ -128,7 +109,7 @@ int initPkcs11Token(Pkcs11Token* token, int slot_id, uint8_t const* pin, size_t 
 
 cleanup:
         wc_Pkcs11Token_Final(token);
-
+        wc_Pkcs11_Finalize(device);
         return ret;
 }
 

@@ -64,15 +64,29 @@ pki_metadata;
 
 typedef struct
 {
-        char const* middlewarePath;
+        struct
+        {
+                char const* path;
+                int slot;
+                char const* pin;
+                int pinLen;
 
-        int slotIssuerKey;
-        int issuerTokenDeviceId;
+                int deviceId;
+        }
+        issuerModule;
 
-        int slotEntityKey;
-        int entityTokenDeviceId;
+        struct
+        {
+                char const* path;
+                int slot;
+                char const* pin;
+                int pinLen;
+
+                int deviceId;
+        }
+        entityModule;
 }
-pki_secure_element;
+pki_pkcs11;
 
 
 /* Parse the provided argv array and store the information in the provided config variables.
@@ -80,7 +94,7 @@ pki_secure_element;
  * Returns 0 on success, +1 in case the help was printed and -1 on failure (error is printed on console).
  */
 int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_generation_info* generation_info,
-                        pki_metadata* metadata, pki_secure_element* secure_element, size_t argc, char** argv);
+                        pki_metadata* metadata, pki_pkcs11* pkcs11, size_t argc, char** argv);
 
 
 

@@ -97,13 +97,6 @@ int kritis3m_pki_set_log_level(int32_t new_log_level);
 char const* kritis3m_pki_error_message(int error_code);
 
 
-/* Initialize the PKCS#11 support with given middleware library.
- *
- * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
- */
-int kritis3m_pki_init_pkcs11(char const* middleware_path);
-
-
 /* Create a new PrivateKey object */
 PrivateKey* privateKey_new(void);
 

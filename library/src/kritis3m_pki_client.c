@@ -13,21 +13,25 @@
 
 
 /* File global variable for the PKCS#11 token containing the entity key */
+static Pkcs11Dev entityDevice;
 static Pkcs11Token entityToken;
 static bool entityTokenInitialized = false;
 
 
-/* Initialize the PKCS#11 token for the entity key. Use the token found at `slot_id`.
- * If `-1` is supplied as `slot_id`, the first found token is used automatically. The
- * `pin` for the token is optional.
+/* Initialize the PKCS#11 token for the entity key. Use the library from `path` and
+ * the token found at `slot_id`. If `-1` is supplied as `slot_id`, the first found
+ * token is used automatically. The `pin` for the token is optional (supply `NULL`
+ * and `0` as parameters).
  *
  * Return value is the `device_id` for the initialized token in case of success
  * (positive integer > 0), negative error code otherwise.
  */
-int kritis3m_pki_init_entity_token(int slot_id, uint8_t const* pin, size_t pin_size)
+int kritis3m_pki_init_entity_token(char const* path, int slot_id, uint8_t const* pin,
+                                   size_t pin_size)
 {
         /* Initialize the token */
-        int ret = initPkcs11Token(&entityToken, slot_id, pin, pin_size, PKCS11_ENTITY_TOKEN_DEVICE_ID);
+        int ret = initPkcs11Token(&entityDevice, &entityToken, path, slot_id,
+                                  pin, pin_size, PKCS11_ENTITY_TOKEN_DEVICE_ID);
         if (ret != KRITIS3M_PKI_SUCCESS)
                 return ret;
 
@@ -122,6 +126,7 @@ int kritis3m_pki_close_entity_token(void)
         if (entityTokenInitialized == true)
         {
                 wc_Pkcs11Token_Final(&entityToken);
+                wc_Pkcs11_Finalize(&entityDevice);
                 entityTokenInitialized = false;
         }
 

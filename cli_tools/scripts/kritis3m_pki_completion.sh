@@ -45,9 +45,14 @@
 #   When using a secure element for key storage, you have to supply the PKCS#11 key labels using the arguments
 #   "--issuerKey", "--issuerAltKey", "--entityKey" and "--entityAltKey" prepending the string
 #   "pkcs11:" followed by the key label.
-#   --middleware <file>           Path to the secure element middleware
-#   --slot_issuer_key <id>        Slot id of the secure element containing the issuer keys (default is first available)
-#   --slot_entity_key <id>        Slot id of the secure element containing the entity keys (default is first available)
+#   You can specify different PKCS#11 modules for the issuer and entity keys. For each, an individual slot
+#   number and User PIN can be specified. If no slot is given, the first available slot is used.
+#   --p11_issuer_module <path>    Path to the PKCS#11 module containing the issuer key
+#   --p11_issuer_slot <id>        Slot id of the PKCS#11 module for the issuer key
+#   --p11_issuer_pin <pin>        PIN for the PKCS#11 module containing the issuer key
+#   --p11_entity_module <path>    Path to the PKCS#11 module containing the entity key
+#   --p11_entity_slot <id>        Slot id of the PKCS#11 module for the entity key
+#   --p11_entity_pin <pin>        PIN for the PKCS#11 module containing the entity key
 #
 # General:
 #   --verbose                     Enable verbose output
@@ -64,15 +69,17 @@ _kritis3m_pki_completions() {
           --gen_key --gen_alt_key \
           --cert_out --csr_out --key_out --alt_key_out \
           --common_name --country --state --org --unit --alt_names_DNS --alt_names_URI --alt_names_IP --validity --CA_cert --self_signed_cert \
-          --middleware --slot_issuer_key --slot_entity_key \
+          --p11_issuer_module --p11_issuer_slot --p11_issuer_pin --p11_entity_module --p11_entity_slot --p11_entity_pin \
           --verbose --debug --help"
 
     case "${prev}" in
-        --issuer_key|--issuer_alt_key|--entity_key|--entity_alt_key|--issuer_cert|--csr_in|--cert_out|--csr_out|--key_out|--alt_key_out|--middleware)
+        --issuer_key|--issuer_alt_key|--entity_key|--entity_alt_key|--issuer_cert|--csr_in|--cert_out|--csr_out|--key_out|--alt_key_out| \
+        --p11_issuer_module|--p11_entity_module)
             _filedir
             return 0
             ;;
-        --common_name|--country|--state|--org|--unit|--alt_names_DNS|--alt_names_URI|--alt_names_IP|--validity|--slot_issuer_key|--slot_entity_key)
+        --common_name|--country|--state|--org|--unit|--alt_names_DNS|--alt_names_URI|--alt_names_IP|--validity|--p11_issuer_slot|--p11_issuer_pin| \
+        --p11_entity_slot|--p11_entity_pin)
             # No file completion needed for these options, just suggest an empty list
             COMPREPLY=()
             return 0
@@ -101,8 +108,9 @@ _kritis3m_pki_completions() {
 #   --alt_key_label <label>       Label of the alternative key in PKCS#11
 #
 # Secure Element:
-#   --middleware <file>           Path to the secure element middleware
+#   --module_path <file>           Path to the secure element middleware
 #   --slot <id>                   Slot id of the secure element containing the issuer keys (default is first available)
+#   --pin <pin>                   PIN for the secure element
 #
 # General:
 #   --verbose                     Enable verbose output
@@ -117,15 +125,15 @@ _kritis3m_se_importer_completions() {
 
     opts="--key --alt_key \
           --key_label --alt_key_label \
-          --middleware --slot \
+          --module_path --slot --pin \
           --verbose --debug --help"
 
     case "${prev}" in
-        --key|--alt_key|--middleware)
+        --key|--alt_key|--module_path)
             _filedir
             return 0
             ;;
-        --slot|--key_label|--alt_key_label)
+        --slot|--pin|--key_label|--alt_key_label)
             # No file completion needed for these options, just suggest an empty list
             COMPREPLY=()
             return 0

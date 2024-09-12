@@ -14,14 +14,16 @@ typedef struct issuerCert IssuerCert;
 typedef struct outputCert OutputCert;
 
 
-/* Initialize the PKCS#11 token for the issuer key. Use the token found at `slot_id`.
- * If `-1` is supplied as `slot_id`, the first found token is used automatically. The
- * `pin` for the token is optional.
+/* Initialize the PKCS#11 token for the issuer key. Use the library from `path` and
+ * the token found at `slot_id`. If `-1` is supplied as `slot_id`, the first found
+ * token is used automatically. The `pin` for the token is optional (supply `NULL`
+ * and `0` as parameters).
  *
  * Return value is the `device_id` for the initialized token in case of success
  * (positive integer > 0), negative error code otherwise.
  */
-int kritis3m_pki_init_issuer_token(int slot_id, uint8_t const* pin, size_t pin_size);
+int kritis3m_pki_init_issuer_token(char const* path, int slot_id, uint8_t const* pin,
+                                   size_t pin_size);
 
 
 /* Close the PKCS#11 token for the issuer key. */
