@@ -146,5 +146,42 @@ _kritis3m_se_importer_completions() {
 }
 
 
+# Usage: wolfpkcs11_provision [OPTIONS]
+# Options:
+#   --module_label <label>       Label of the PKCS#11 module
+#   --so_pin <pin>               Security Officer PIN of the PKCS#11 module
+#   --user_pin <pin>             User PIN of the PKCS#11 module
+#   --module_path <path>         Path to the PKCS#11 module
+#   -v --verbose                 Enable verbose output
+#   -d --debug                   Enable debug output
+#   -h --help                    Print this help
+
+_wolfpkcs11_provision_completions() {
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    opts="--module_label --so_pin --user_pin --module_path \
+          --verbose --debug --help"
+
+    case "${prev}" in
+        --module_path)
+            _filedir
+            return 0
+            ;;
+        --module_label|--so_pin|--user_pin)
+            # No file completion needed for these options, just suggest an empty list
+            COMPREPLY=()
+            return 0
+            ;;
+        *)
+            COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+            return 0
+            ;;
+    esac
+}
+
 complete -F _kritis3m_pki_completions kritis3m_pki
 complete -F _kritis3m_se_importer_completions kritis3m_se_importer
+complete -F _wolfpkcs11_provision_completions wolfpkcs11_provision
