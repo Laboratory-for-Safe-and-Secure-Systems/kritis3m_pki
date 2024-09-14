@@ -45,12 +45,12 @@ char const* kritis3m_pki_error_message(int error_code)
 
 /* Initialize the KRITIS3M PKI libraries.
  *
- * Parameter is a pointer to a filled krits3m_pki_configuration structure.
+ * Parameter is a pointer to a filled kritis3m_pki_configuration structure.
  *
  * Returns KRITIS3M_PKI_SUCCESS on success, negative error code in case of an error
  * (error message is logged to the console).
  */
-int kritis3m_pki_init(krits3m_pki_configuration const* config)
+int kritis3m_pki_init(kritis3m_pki_configuration const* config)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
 

@@ -77,7 +77,7 @@ int main(int argc, char** argv)
                 ERROR_OUT("unable to allocate buffer");
 
         /* Initialize the PKI libraries */
-        krits3m_pki_configuration pki_lib_config = {
+        kritis3m_pki_configuration pki_lib_config = {
                 .logging_enabled = true,
                 .log_level = LOG_LVL_GET(),
                 .custom_log_callback = pki_lib_log_callback,
