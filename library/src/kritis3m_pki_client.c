@@ -228,7 +228,7 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
         if (metadata->country != NULL)
                 strncpy(request->req.subject.country, metadata->country, CTC_NAME_SIZE);
         else
-                strncpy(request->req.subject.state, SUBJECT_COUNTRY, CTC_NAME_SIZE);
+                strncpy(request->req.subject.country, SUBJECT_COUNTRY, CTC_NAME_SIZE);
 
         if (metadata->state != NULL)
                 strncpy(request->req.subject.state, metadata->state, CTC_NAME_SIZE);
