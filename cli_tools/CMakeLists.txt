@@ -11,7 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # When enabled, the CLI tools will be built as a self-contained executables with all
 # dependencies included. When disabled, the tools dynamically load the dependencies
 # at runtime.
-option(KRITIS3M_PKI_TOOLS_SELF_CONTAINED "Build self-contained CLI tools" OFF)
+option(KRITIS3M_PKI_TOOLS_SELF_CONTAINED "Build self-contained CLI tools" ON)
 
 # When enabled, the compiled PKI libraries are installed, too. When disabled, only
 # the executables are installed. Only relevant when building self-contained tools.
@@ -19,7 +19,7 @@ option(KRITIS3M_PKI_INSTALL_LIBRARIES "Install PKI libraries" OFF)
 
 # When enabled, the WolfPKCS11 library is added as a dependency and compiled as a
 # shared library. When disabled, the library is not included.
-option(KRITIS3M_PKI_INCLUDE_WOLFPKCS11 "Include WolfPKCS11 library" ON)
+option(KRITIS3M_PKI_INCLUDE_WOLFPKCS11 "Include WolfPKCS11 library" OFF)
 
 
 # Define the main kritis3m_pki executable
