@@ -12,11 +12,14 @@
 #define SUBJECT_EMAIL "las3@oth-regensburg.de"
 
 
+#ifdef HAVE_PKCS11
+
 /* File global variable for the PKCS#11 token containing the entity key */
 static Pkcs11Dev entityDevice;
 static Pkcs11Token entityToken;
 static bool entityTokenInitialized = false;
 
+#endif
 
 /* Initialize the PKCS#11 token for the entity key. Use the library from `path` and
  * the token found at `slot_id`. If `-1` is supplied as `slot_id`, the first found
@@ -29,6 +32,7 @@ static bool entityTokenInitialized = false;
 int kritis3m_pki_init_entity_token(char const* path, int slot_id, uint8_t const* pin,
                                    size_t pin_size)
 {
+#ifdef HAVE_PKCS11
         /* Initialize the token */
         int ret = initPkcs11Token(&entityDevice, &entityToken, path, slot_id,
                                   pin, pin_size, PKCS11_ENTITY_TOKEN_DEVICE_ID);
@@ -38,6 +42,10 @@ int kritis3m_pki_init_entity_token(char const* path, int slot_id, uint8_t const*
         entityTokenInitialized = true;
 
         return PKCS11_ENTITY_TOKEN_DEVICE_ID;
+#else
+        pki_log(KRITIS3M_PKI_LOG_LEVEL_ERR, "PKCS#11 support not compiled in");
+        return KRITIS3M_PKI_PKCS11_ERROR;
+#endif
 }
 
 
@@ -47,6 +55,7 @@ int kritis3m_pki_init_entity_token(char const* path, int slot_id, uint8_t const*
  */
 int kritis3m_pki_entity_token_import_key(PrivateKey* key)
 {
+#ifdef HAVE_PKCS11
         int ret = KRITIS3M_PKI_SUCCESS;
 
         if ((key == NULL) || (key->primaryKey.init == false))
@@ -117,12 +126,17 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
 
 cleanup:
         return ret;
+#else
+        pki_log(KRITIS3M_PKI_LOG_LEVEL_ERR, "PKCS#11 support not compiled in");
+        return KRITIS3M_PKI_PKCS11_ERROR;
+#endif
 }
 
 
 /* Close the PKCS#11 token for the entity key. */
 int kritis3m_pki_close_entity_token(void)
 {
+#ifdef HAVE_PKCS11
         if (entityTokenInitialized == true)
         {
                 wc_Pkcs11Token_Final(&entityToken);
@@ -131,6 +145,9 @@ int kritis3m_pki_close_entity_token(void)
         }
 
         return KRITIS3M_PKI_SUCCESS;
+#else
+        return KRITIS3M_PKI_PKCS11_ERROR;
+#endif
 }
 
 

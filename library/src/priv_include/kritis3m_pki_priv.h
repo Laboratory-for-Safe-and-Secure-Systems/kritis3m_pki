@@ -92,11 +92,15 @@ struct outputCert
 
 /* Internal helper methods */
 void pki_log(int32_t level, char const* message, ...);
-int initPkcs11Token(Pkcs11Dev* device, Pkcs11Token* token, char const* path, int slot_id,
-                    uint8_t const* pin, size_t pin_size, int device_id);
+
 int initPrivateKey(SinglePrivateKey* key, int type);
 int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeySize, int type);
 int getSigAlgForKey(SinglePrivateKey* key);
 void freeSinglePrivateKey(SinglePrivateKey* key);
+
+#ifdef HAVE_PKCS11
+int initPkcs11Token(Pkcs11Dev* device, Pkcs11Token* token, char const* path, int slot_id,
+                    uint8_t const* pin, size_t pin_size, int device_id);
+#endif
 
 #endif /* KRITIS3M_PKI_PRIV_H */

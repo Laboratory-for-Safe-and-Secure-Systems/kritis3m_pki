@@ -72,6 +72,8 @@ int kritis3m_pki_init(kritis3m_pki_configuration const* config)
 }
 
 
+#ifdef HAVE_PKCS11
+
 /* Internal helper method */
 int initPkcs11Token(Pkcs11Dev* device, Pkcs11Token* token, char const* path, int slot_id,
                     uint8_t const* pin, size_t pin_size, int device_id)
@@ -112,6 +114,8 @@ cleanup:
         wc_Pkcs11_Finalize(device);
         return ret;
 }
+
+#endif
 
 
 /* Create a new PrivateKey object */

@@ -2,11 +2,14 @@
 #include "kritis3m_pki_priv.h"
 
 
+#ifdef HAVE_PKCS11
 
 /* File global variable for the PKCS#11 token containing the issuer key */
 static Pkcs11Dev issuerDevice;
 static Pkcs11Token issuerToken;
 static bool issuerTokenInitialized = false;
+
+#endif
 
 
 /* Initialize the PKCS#11 token for the issuer key. Use the library from `path` and
@@ -20,6 +23,7 @@ static bool issuerTokenInitialized = false;
 int kritis3m_pki_init_issuer_token(char const* path, int slot_id, uint8_t const* pin,
                                    size_t pin_size)
 {
+#ifdef HAVE_PKCS11
         /* Initialize the token */
         int ret = initPkcs11Token(&issuerDevice, &issuerToken, path, slot_id,
                                   pin, pin_size, PKCS11_ISSUER_TOKEN_DEVICE_ID);
@@ -29,12 +33,17 @@ int kritis3m_pki_init_issuer_token(char const* path, int slot_id, uint8_t const*
         issuerTokenInitialized = true;
 
         return PKCS11_ISSUER_TOKEN_DEVICE_ID;
+#else
+        pki_log(KRITIS3M_PKI_LOG_LEVEL_ERR, "PKCS#11 support not compiled in");
+        return KRITIS3M_PKI_PKCS11_ERROR;
+#endif
 }
 
 
 /* Close the PKCS#11 token for the issuer key. */
 int kritis3m_pki_close_issuer_token(void)
 {
+#ifdef HAVE_PKCS11
         if (issuerTokenInitialized == true)
         {
                 wc_Pkcs11Token_Final(&issuerToken);
@@ -43,6 +52,10 @@ int kritis3m_pki_close_issuer_token(void)
         }
 
         return KRITIS3M_PKI_SUCCESS;
+#else
+        pki_log(KRITIS3M_PKI_LOG_LEVEL_ERR, "PKCS#11 support not compiled in");
+        return KRITIS3M_PKI_PKCS11_ERROR;
+#endif
 }
 
 
