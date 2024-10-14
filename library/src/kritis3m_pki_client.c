@@ -1,7 +1,16 @@
 #include "kritis3m_pki_client.h"
 #include "kritis3m_pki_priv.h"
 
+
+#if defined(_WIN32)
+
+#include <winsock2.h>
+
+#else
+
 #include <arpa/inet.h>
+
+#endif
 
 
 #define SUBJECT_COUNTRY "DE"
@@ -286,7 +295,7 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
                 while (altName != NULL)
                 {
                         struct in_addr ipv4_addr;
-                        ret = inet_aton(altName, &ipv4_addr);
+                        ret = inet_pton(AF_INET, altName, &ipv4_addr);
                         if (ret == 0)
                                 ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR, "Invalid IPv4 address: %s", altName);
 

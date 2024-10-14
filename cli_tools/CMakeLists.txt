@@ -5,6 +5,11 @@ include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Necessary to allow FetchContent_Populate
+if(POLICY CMP0169)
+        cmake_policy(SET CMP0169 OLD)
+endif()
+
 
 # Options
 
@@ -32,17 +37,23 @@ target_include_directories(kritis3m_pki PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 target_compile_options(kritis3m_pki PUBLIC
-        -Wall
-        -Wextra
-        -Wpedantic
-        -Werror
         -march=native
-        -Wa,--noexecstack
         -fomit-frame-pointer
         -fdata-sections
         -ffunction-sections
-        -Wl,--gc-sections
+        # -Wl,--gc-sections
 )
+
+if (NOT MSVC)
+        target_compile_options(kritis3m_pki PUBLIC
+                -Wall
+                -Wextra
+                -Wpedantic
+                -Werror
+                # -Wa,--noexecstack
+                -Wl,--gc-sections
+        )
+endif()
 
 # Define the additional kritis3m_se_importer executable
 add_executable(kritis3m_se_importer
@@ -53,17 +64,23 @@ target_include_directories(kritis3m_se_importer PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 target_compile_options(kritis3m_se_importer PUBLIC
-        -Wall
-        -Wextra
-        -Wpedantic
-        -Werror
         -march=native
-        -Wa,--noexecstack
         -fomit-frame-pointer
         -fdata-sections
         -ffunction-sections
-        -Wl,--gc-sections
+        # -Wl,--gc-sections
 )
+
+if (NOT MSVC)
+        target_compile_options(kritis3m_se_importer PUBLIC
+                -Wall
+                -Wextra
+                -Wpedantic
+                -Werror
+                # -Wa,--noexecstack
+                -Wl,--gc-sections
+        )
+endif()
 
 
 # When building a self-contained tools, we need to build static libraries. Otherwise,
@@ -136,17 +153,23 @@ if(KRITIS3M_PKI_INCLUDE_WOLFPKCS11)
                 ${CMAKE_CURRENT_SOURCE_DIR}/include
         )
         target_compile_options(wolfpkcs11_provision PUBLIC
-                -Wall
-                -Wextra
-                -Wpedantic
-                -Werror
                 -march=native
-                -Wa,--noexecstack
                 -fomit-frame-pointer
                 -fdata-sections
                 -ffunction-sections
-                -Wl,--gc-sections
+                # -Wl,--gc-sections
         )
+
+        if (NOT MSVC)
+                target_compile_options(wolfpkcs11_provision PUBLIC
+                        -Wall
+                        -Wextra
+                        -Wpedantic
+                        -Werror
+                        # -Wa,--noexecstack
+                        -Wl,--gc-sections
+                )
+        endif()
 
         # WolfPKCS11 needs WolfSSL
         target_link_libraries(wolfpkcs11 PRIVATE wolfssl)
