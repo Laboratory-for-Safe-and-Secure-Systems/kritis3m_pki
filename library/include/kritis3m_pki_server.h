@@ -22,16 +22,16 @@ typedef struct outputCert OutputCert;
  * Return value is the `device_id` for the initialized token in case of success
  * (positive integer > 0), negative error code otherwise.
  */
-int kritis3m_pki_init_issuer_token(char const* path, int slot_id, uint8_t const* pin,
-                                   size_t pin_size);
+KRITIS3M_PKI_API int kritis3m_pki_init_issuer_token(char const* path, int slot_id,
+                                                    uint8_t const* pin, size_t pin_size);
 
 
 /* Close the PKCS#11 token for the issuer key. */
-int kritis3m_pki_close_issuer_token(void);
+KRITIS3M_PKI_API int kritis3m_pki_close_issuer_token(void);
 
 
 /* Create a new IssuerCert object. */
-IssuerCert* issuerCert_new(void);
+KRITIS3M_PKI_API IssuerCert* issuerCert_new(void);
 
 
 /* Initialize the given IssuerCert `cert` using the PEM encoded data in the provided `buffer`
@@ -39,15 +39,16 @@ IssuerCert* issuerCert_new(void);
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t buffer_size, PrivateKey* issuerKey);
+KRITIS3M_PKI_API int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer,
+                                               size_t buffer_size, PrivateKey* issuerKey);
 
 
 /* Free the memory of given IssuerCert */
-void issuerCert_free(IssuerCert* cert);
+KRITIS3M_PKI_API void issuerCert_free(IssuerCert* cert);
 
 
 /* Create a new OutputCert object. */
-OutputCert* outputCert_new(void);
+KRITIS3M_PKI_API OutputCert* outputCert_new(void);
 
 
 /* Initialize the given OutputCert from the CSR, PEM encoded in the provided `bufffer` with
@@ -55,7 +56,8 @@ OutputCert* outputCert_new(void);
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t buffer_size);
+KRITIS3M_PKI_API int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer,
+                                            size_t buffer_size);
 
 
 /* Set issuer data of the new OutputCert `outputCert` using data from IssuerCert `issuerCert`
@@ -63,26 +65,27 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert, PrivateKey* issuerKey);
+KRITIS3M_PKI_API int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert,
+                                              PrivateKey* issuerKey);
 
 
 /* Set the validity period to `days` days of the new OutputCert `outputCert`.
  */
-void outputCert_setValidity(OutputCert* outputCert, int days);
+KRITIS3M_PKI_API void outputCert_setValidity(OutputCert* outputCert, int days);
 
 
 /* Configure the new OutputCert to be a CA certificate, capable of signing new certificates.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int outputCert_configureAsCA(OutputCert* outputCert);
+KRITIS3M_PKI_API int outputCert_configureAsCA(OutputCert* outputCert);
 
 
 /* Configure the new OutputCert to be an entity certificate for authentication.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int outputCert_configureAsEntity(OutputCert* outputCert);
+KRITIS3M_PKI_API int outputCert_configureAsEntity(OutputCert* outputCert);
 
 
 /* Finalize the new OutputCert by signing it with the issuer private key. Store the final PEM
@@ -92,11 +95,12 @@ int outputCert_configureAsEntity(OutputCert* outputCert);
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int outputCert_finalize(OutputCert* outputCert, PrivateKey* issuerKey, uint8_t* buffer, size_t* buffer_size);
+KRITIS3M_PKI_API int outputCert_finalize(OutputCert* outputCert, PrivateKey* issuerKey,
+                                        uint8_t* buffer, size_t* buffer_size);
 
 
 /* Free the memory of given OutputCert */
-void outputCert_free(OutputCert* outputCert);
+KRITIS3M_PKI_API void outputCert_free(OutputCert* outputCert);
 
 
 #endif /* KRITIS3M_PKI_SERVER_H */

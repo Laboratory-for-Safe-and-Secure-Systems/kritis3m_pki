@@ -162,7 +162,7 @@ int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t bu
         ret = KRITIS3M_PKI_SUCCESS;
 
 cleanup:
-        FreeDer(&der);
+        wc_FreeDer(&der);
         if (decodedCertInit)
                 wc_FreeDecodedCert(&decodedCert);
 

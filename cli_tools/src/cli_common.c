@@ -14,7 +14,7 @@
 int readFile(const char* filePath, uint8_t* buffer, size_t* bufferSize)
 {
         /* Open the file */
-        FILE* file = fopen(filePath, "r");
+        FILE* file = fopen(filePath, "rb");
 
         if (file == NULL)
         {

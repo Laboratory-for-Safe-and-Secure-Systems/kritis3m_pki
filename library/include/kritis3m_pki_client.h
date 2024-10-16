@@ -36,30 +36,31 @@ typedef struct signingRequest SigningRequest;
  * Return value is the `device_id` for the initialized token in case of success
  * (positive integer > 0), negative error code otherwise.
  */
-int kritis3m_pki_init_entity_token(char const* path, int slot_id, uint8_t const* pin,
-                                   size_t pin_size);
+KRITIS3M_PKI_API int kritis3m_pki_init_entity_token(char const* path, int slot_id,
+                                                    uint8_t const* pin, size_t pin_size);
 
 
 /* Import the PrivateKey object 'key' into an external reference.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int kritis3m_pki_entity_token_import_key(PrivateKey* key);
+KRITIS3M_PKI_API int kritis3m_pki_entity_token_import_key(PrivateKey* key);
 
 
 /* Close the PKCS#11 token for the entity key. */
-int kritis3m_pki_close_entity_token(void);
+KRITIS3M_PKI_API int kritis3m_pki_close_entity_token(void);
 
 
 /* Create a new SigningRequest object. */
-SigningRequest* signingRequest_new(void);
+KRITIS3M_PKI_API SigningRequest* signingRequest_new(void);
 
 
 /* Initialize the SigningRequest with given metadata.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* metadata);
+KRITIS3M_PKI_API int signingRequest_init(SigningRequest* request,
+                                         SigningRequestMetadata const* metadata);
 
 
 /* Finalize the SigningRequest using the related private key. Store the final PEM encoded output
@@ -69,10 +70,11 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* buffer, size_t* buffer_size);
+KRITIS3M_PKI_API int signingRequest_finalize(SigningRequest* request, PrivateKey* key,
+                                            uint8_t* buffer, size_t* buffer_size);
 
 
 /* Free the memory of given SigningRequest */
-void signingRequest_free(SigningRequest* request);
+KRITIS3M_PKI_API void signingRequest_free(SigningRequest* request);
 
 #endif /* KRITIS3M_PKI_CLIENT_H */

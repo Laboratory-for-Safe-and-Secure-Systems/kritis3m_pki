@@ -58,7 +58,7 @@ int kritis3m_pki_init(kritis3m_pki_configuration const* config)
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
 
         /* Configure the logging interface */
-        kritis3m_pki_set_custom_log_callback(config->custom_log_callback);
+        kritis3m_pki_set_log_callback(config->log_callback);
         kritis3m_pki_enable_logging(config->logging_enabled);
         kritis3m_pki_set_log_level(config->log_level);
 
@@ -392,9 +392,6 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
                 {
                         ret = wc_EccPublicKeyDecode(pubKey, &idx, &key->key.ecc, pubKeySize);
                 }
-
-                /* Check if public and private key belong together */
-                //
         }
         else if ((type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
                         (type == DILITHIUM_LEVEL5k))
@@ -426,32 +423,32 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
         /* Check if public key and private key belong together. */
         if (type == RSAk)
         {
-                if (key->external.label != NULL)
-                        ret = wc_CryptoCb_RsaCheckPrivKey(&key->key.rsa, pubKey, pubKeySize);
-                else
+                // if (key->external.label != NULL)
+                //         ret = wc_CryptoCb_RsaCheckPrivKey(&key->key.rsa, pubKey, pubKeySize);
+                // else
                         ret = wc_CheckRsaKey(&key->key.rsa);
         }
         else if (type == ECDSAk)
         {
-                if (key->external.label != NULL)
-                        ret = wc_CryptoCb_EccCheckPrivKey(&key->key.ecc, pubKey, pubKeySize);
-                else
+                // if (key->external.label != NULL)
+                //         ret = wc_CryptoCb_EccCheckPrivKey(&key->key.ecc, pubKey, pubKeySize);
+                // else
                         ret = wc_ecc_check_key(&key->key.ecc);
         }
         else if ((type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
                         (type == DILITHIUM_LEVEL5k))
         {
-                if (key->external.label != NULL)
-                        ret = wc_CryptoCb_PqcSignatureCheckPrivKey(&key->key.dilithium,
-                                        WC_PQC_SIG_TYPE_DILITHIUM, pubKey, pubKeySize);
-                else
+                // if (key->external.label != NULL)
+                //         ret = wc_CryptoCb_PqcSignatureCheckPrivKey(&key->key.dilithium,
+                //                         WC_PQC_SIG_TYPE_DILITHIUM, pubKey, pubKeySize);
+                // else
                         ret = wc_dilithium_check_key(&key->key.dilithium);
         }
         else if ((type == FALCON_LEVEL1k) || (type == FALCON_LEVEL5k))
         {
-                if (key->external.label != NULL)
-                        ret = wc_CryptoCb_PqcSignatureCheckPrivKey(&key->key.falcon,
-                                        WC_PQC_SIG_TYPE_FALCON, pubKey, pubKeySize);
+                // if (key->external.label != NULL)
+                //         ret = wc_CryptoCb_PqcSignatureCheckPrivKey(&key->key.falcon,
+                //                         WC_PQC_SIG_TYPE_FALCON, pubKey, pubKeySize);
                 // else
                         /* Not supported currently... */
                         // ret = wc_falcon_check_key(&key->key.falcon);
@@ -607,7 +604,7 @@ static int parsePemBuffer(uint8_t const* buffer, size_t buffer_size, SinglePriva
         int key_type = 0;
 
         /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer object. */
-        ret = PemToDer(buffer, buffer_size, PRIVATEKEY_TYPE, &der, NULL, info, &key_type);
+        ret = wc_PemToDer(buffer, buffer_size, PRIVATEKEY_TYPE, &der, NULL, info, &key_type);
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_PEM_DECODE_ERROR, "PEM to DER conversion failed: %d", ret);
 
@@ -673,7 +670,7 @@ static int parsePemBuffer(uint8_t const* buffer, size_t buffer_size, SinglePriva
         ret = KRITIS3M_PKI_SUCCESS;
 
 cleanup:
-        FreeDer(&der);
+        wc_FreeDer(&der);
 
         return ret;
 }

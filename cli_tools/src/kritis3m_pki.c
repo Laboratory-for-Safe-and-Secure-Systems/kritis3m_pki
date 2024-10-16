@@ -1,9 +1,7 @@
 
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <getopt.h>
 
 #include "cli_common.h"
 #include "kritis3m_pki_client.h"
@@ -80,7 +78,7 @@ int main(int argc, char** argv)
         kritis3m_pki_configuration pki_lib_config = {
                 .logging_enabled = true,
                 .log_level = LOG_LVL_GET(),
-                .custom_log_callback = pki_lib_log_callback,
+                .log_callback = pki_lib_log_callback,
         };
         ret = kritis3m_pki_init(&pki_lib_config);
         if (ret != KRITIS3M_PKI_SUCCESS)

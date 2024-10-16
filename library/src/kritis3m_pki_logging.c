@@ -11,7 +11,7 @@
 
 /* Internal logging variables */
 static int32_t log_level = KRITIS3M_PKI_LOG_LEVEL_ERR;
-static kritis3m_pki_custom_log_callback log_callback = NULL;
+static kritis3m_pki_log_callback log_callback = NULL;
 static bool log_enabled = false;
 
 /* Internal method declarations */
@@ -51,7 +51,7 @@ int kritis3m_pki_enable_logging(bool enable)
  *
  * Returns KRITIS3M_PKI_SUCCESS on success, negative error code in case of an error.
  */
-int kritis3m_pki_set_custom_log_callback(kritis3m_pki_custom_log_callback new_callback)
+int kritis3m_pki_set_log_callback(kritis3m_pki_log_callback new_callback)
 {
 	/* Update the internal pointer to the callback. */
 	if (new_callback != NULL)

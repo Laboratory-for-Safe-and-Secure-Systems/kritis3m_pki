@@ -16,7 +16,7 @@ endif()
 # When enabled, the CLI tools will be built as a self-contained executables with all
 # dependencies included. When disabled, the tools dynamically load the dependencies
 # at runtime.
-option(KRITIS3M_PKI_TOOLS_SELF_CONTAINED "Build self-contained CLI tools" ON)
+option(KRITIS3M_PKI_TOOLS_SELF_CONTAINED "Build self-contained CLI tools" OFF)
 
 # When enabled, the compiled PKI libraries are installed, too. When disabled, only
 # the executables are installed. Only relevant when building self-contained tools.
@@ -36,20 +36,16 @@ add_executable(kritis3m_pki
 target_include_directories(kritis3m_pki PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_compile_options(kritis3m_pki PUBLIC
-        -march=native
-        -fomit-frame-pointer
-        -fdata-sections
-        -ffunction-sections
-        # -Wl,--gc-sections
-)
-
 if (NOT MSVC)
         target_compile_options(kritis3m_pki PUBLIC
                 -Wall
                 -Wextra
                 -Wpedantic
                 -Werror
+                -march=native
+                -fomit-frame-pointer
+                -fdata-sections
+                -ffunction-sections
                 # -Wa,--noexecstack
                 -Wl,--gc-sections
         )
@@ -63,20 +59,16 @@ add_executable(kritis3m_se_importer
 target_include_directories(kritis3m_se_importer PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_compile_options(kritis3m_se_importer PUBLIC
-        -march=native
-        -fomit-frame-pointer
-        -fdata-sections
-        -ffunction-sections
-        # -Wl,--gc-sections
-)
-
 if (NOT MSVC)
         target_compile_options(kritis3m_se_importer PUBLIC
                 -Wall
                 -Wextra
                 -Wpedantic
                 -Werror
+                -march=native
+                -fomit-frame-pointer
+                -fdata-sections
+                -ffunction-sections
                 # -Wa,--noexecstack
                 -Wl,--gc-sections
         )
@@ -152,20 +144,16 @@ if(KRITIS3M_PKI_INCLUDE_WOLFPKCS11)
         target_include_directories(wolfpkcs11_provision PUBLIC
                 ${CMAKE_CURRENT_SOURCE_DIR}/include
         )
-        target_compile_options(wolfpkcs11_provision PUBLIC
-                -march=native
-                -fomit-frame-pointer
-                -fdata-sections
-                -ffunction-sections
-                # -Wl,--gc-sections
-        )
-
         if (NOT MSVC)
                 target_compile_options(wolfpkcs11_provision PUBLIC
                         -Wall
                         -Wextra
                         -Wpedantic
                         -Werror
+                        -march=native
+                        -fomit-frame-pointer
+                        -fdata-sections
+                        -ffunction-sections
                         # -Wa,--noexecstack
                         -Wl,--gc-sections
                 )
