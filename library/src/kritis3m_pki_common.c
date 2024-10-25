@@ -248,8 +248,13 @@ int initPrivateKey(SinglePrivateKey* key, int type)
                 key->certKeyType = ECC_TYPE;
                 wc_ecc_set_flags(&key->key.ecc, WC_ECC_FLAG_DEC_SIGN);
         }
-        else if ((type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
-                 (type == DILITHIUM_LEVEL5k))
+        else if (
+        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                 (type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
+                 (type == DILITHIUM_LEVEL5k) ||
+        #endif
+                 (type == ML_DSA_LEVEL2k) || (type == ML_DSA_LEVEL3k) ||
+                 (type == ML_DSA_LEVEL5k))
         {
                 if (key->external.label != NULL)
                         ret = wc_dilithium_init_label(&key->key.dilithium, key->external.label,
@@ -262,18 +267,32 @@ int initPrivateKey(SinglePrivateKey* key, int type)
 
                 switch (type)
                 {
+                case ML_DSA_LEVEL2k:
+                        key->certKeyType = DILITHIUM_LEVEL2_TYPE;
+                        ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_44);
+                        break;
+                case ML_DSA_LEVEL3k:
+                        key->certKeyType = DILITHIUM_LEVEL3_TYPE;
+                        ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_65);
+                        break;
+                case ML_DSA_LEVEL5k:
+                        key->certKeyType = DILITHIUM_LEVEL5_TYPE;
+                        ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_87);
+                        break;
+        #if defined(WOLFSSL_DILITHIUM_FIPS204_DRAFT)
                 case DILITHIUM_LEVEL2k:
                         key->certKeyType = DILITHIUM_LEVEL2_TYPE;
-                        ret = wc_dilithium_set_level(&key->key.dilithium, 2);
+                        ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_44_DRAFT);
                         break;
                 case DILITHIUM_LEVEL3k:
                         key->certKeyType = DILITHIUM_LEVEL3_TYPE;
-                        ret = wc_dilithium_set_level(&key->key.dilithium, 3);
+                        ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_65_DRAFT);
                         break;
                 case DILITHIUM_LEVEL5k:
                         key->certKeyType = DILITHIUM_LEVEL5_TYPE;
-                        ret = wc_dilithium_set_level(&key->key.dilithium, 5);
+                        ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_87_DRAFT);
                         break;
+        #endif
                 default:
                         ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported Dilithium key level");
                 }
@@ -393,8 +412,13 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
                         ret = wc_EccPublicKeyDecode(pubKey, &idx, &key->key.ecc, pubKeySize);
                 }
         }
-        else if ((type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
-                        (type == DILITHIUM_LEVEL5k))
+        else if (
+        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                 (type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
+                 (type == DILITHIUM_LEVEL5k) ||
+        #endif
+                 (type == ML_DSA_LEVEL2k) || (type == ML_DSA_LEVEL3k) ||
+                 (type == ML_DSA_LEVEL5k))
         {
                 ret = wc_Dilithium_PublicKeyDecode(pubKey, &idx, &key->key.dilithium,
                                                         pubKeySize);
@@ -435,8 +459,13 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
                 // else
                         ret = wc_ecc_check_key(&key->key.ecc);
         }
-        else if ((type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
-                        (type == DILITHIUM_LEVEL5k))
+        else if (
+        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                 (type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
+                 (type == DILITHIUM_LEVEL5k) ||
+        #endif
+                 (type == ML_DSA_LEVEL2k) || (type == ML_DSA_LEVEL3k) ||
+                 (type == ML_DSA_LEVEL5k))
         {
                 // if (key->external.label != NULL)
                 //         ret = wc_CryptoCb_PqcSignatureCheckPrivKey(&key->key.dilithium,
@@ -507,6 +536,43 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         else
                 freeSinglePrivateKey(key);
 
+        /* Try ML-DSA 44 */
+        pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode ML-DSA 44 key");
+        index = 0;
+        if (ret = initPrivateKey(key, ML_DSA_LEVEL2k) != 0)
+                return ret;
+        ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index, &key->key.dilithium, der->length);
+        if (ret == 0)
+                /* ML-DSA 44 was a success, so we are done */
+                return KRITIS3M_PKI_SUCCESS;
+        else
+                freeSinglePrivateKey(key);
+
+        /* Try ML-DSA 65 */
+        pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode ML-DSA 65 key");
+        index = 0;
+        if (ret = initPrivateKey(key, ML_DSA_LEVEL3k) != 0)
+                return ret;
+        ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index, &key->key.dilithium, der->length);
+        if (ret == 0)
+                /* ML-DSA 65 was a success, so we are done */
+                return KRITIS3M_PKI_SUCCESS;
+        else
+                freeSinglePrivateKey(key);
+
+        /* Try ML-DSA 87 */
+        pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode ML-DSA 87 key");
+        index = 0;
+        if (ret = initPrivateKey(key, ML_DSA_LEVEL5k) != 0)
+                return ret;
+        ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index, &key->key.dilithium, der->length);
+        if (ret == 0)
+                /* ML-DSA 87 was a success, so we are done */
+                return KRITIS3M_PKI_SUCCESS;
+        else
+                freeSinglePrivateKey(key);
+
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
         /* Try Dilithium Level 2 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Dilithium Level 2 key");
         index = 0;
@@ -542,6 +608,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
                 return KRITIS3M_PKI_SUCCESS;
         else
                 freeSinglePrivateKey(key);
+#endif
 
         /* Try Falcon Level 1 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Falcon Level 1 key");
@@ -628,8 +695,13 @@ static int parsePemBuffer(uint8_t const* buffer, size_t buffer_size, SinglePriva
                         ret = wc_RsaPrivateKeyDecode(der->buffer, &index, &key->key.rsa, der->length);
                 else if (key->type == ECDSAk)
                         ret = wc_EccPrivateKeyDecode(der->buffer, &index, &key->key.ecc, der->length);
-                else if ((key->type == DILITHIUM_LEVEL2k) || (key->type == DILITHIUM_LEVEL3k) ||
-                        (key->type == DILITHIUM_LEVEL5k))
+                else if (
+                #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                         (key->type == DILITHIUM_LEVEL2k) || (key->type == DILITHIUM_LEVEL3k) ||
+                         (key->type == DILITHIUM_LEVEL5k) ||
+                #endif
+                         (key->type == ML_DSA_LEVEL2k) || (key->type == ML_DSA_LEVEL3k) ||
+                         (key->type == ML_DSA_LEVEL5k))
                         ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index,
                                         &key->key.dilithium, der->length);
                 else if ((key->type == FALCON_LEVEL1k) || (key->type == FALCON_LEVEL5k))
@@ -784,10 +856,29 @@ int generateKey(SinglePrivateKey* key, char const* algorithm)
         {
                 /* Initialize the key depending on the requested type */
                 if (strcmp(algorithm, "mldsa44") == 0)
-                        ret = initPrivateKey(key, DILITHIUM_LEVEL2k);
+                        ret = initPrivateKey(key, ML_DSA_LEVEL2k);
                 else if (strcmp(algorithm, "mldsa65") == 0)
-                        ret = initPrivateKey(key, DILITHIUM_LEVEL3k);
+                        ret = initPrivateKey(key, ML_DSA_LEVEL3k);
                 else if (strcmp(algorithm, "mldsa87") == 0)
+                        ret = initPrivateKey(key, ML_DSA_LEVEL5k);
+                else
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported ML-DSA key level: %s", algorithm);
+
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "ML-DSA key initialization failed");
+
+                /* Generate the actual key pair */
+                ret = wc_dilithium_make_key(&key->key.dilithium, &rng);
+        }
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+        else if (strncmp(algorithm, "dilithium", 5) == 0)
+        {
+                /* Initialize the key depending on the requested type */
+                if (strcmp(algorithm, "dilithium2") == 0)
+                        ret = initPrivateKey(key, DILITHIUM_LEVEL2k);
+                else if (strcmp(algorithm, "dilithium3") == 0)
+                        ret = initPrivateKey(key, DILITHIUM_LEVEL3k);
+                else if (strcmp(algorithm, "dilithium5") == 0)
                         ret = initPrivateKey(key, DILITHIUM_LEVEL5k);
                 else
                         ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported Dilithium key level: %s", algorithm);
@@ -798,6 +889,7 @@ int generateKey(SinglePrivateKey* key, char const* algorithm)
                 /* Generate the actual key pair */
                 ret = wc_dilithium_make_key(&key->key.dilithium, &rng);
         }
+#endif
         /* Falcon not yet supported */
         else if (strcmp(algorithm, "ed25519") == 0)
         {
@@ -899,9 +991,15 @@ int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size
                 // ret = wc_EccKeyToDer(&key->key.ecc, derBuffer, derSize);
                 ret = wc_EccKeyToPKCS8(&key->key.ecc, derBuffer, &derSize);
         }
-        else if ((key->type == DILITHIUM_LEVEL2k) ||
+        else if (
+        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                 (key->type == DILITHIUM_LEVEL2k) ||
                  (key->type == DILITHIUM_LEVEL3k) ||
-                 (key->type == DILITHIUM_LEVEL5k))
+                 (key->type == DILITHIUM_LEVEL5k) ||
+        #endif
+                 (key->type == ML_DSA_LEVEL2k) ||
+                 (key->type == ML_DSA_LEVEL3k) ||
+                 (key->type == ML_DSA_LEVEL5k))
         {
                 /* Encode the key and store it in DER encoding */
                 // ret = wc_Dilithium_KeyToDer(&key->key.dilithium, derBuffer, derSize);
@@ -1116,6 +1214,16 @@ int getSigAlgForKey(SinglePrivateKey* key)
                 }
                 break;
         }
+        case ML_DSA_LEVEL2k:
+                sigAlg = CTC_ML_DSA_LEVEL2;
+                break;
+        case ML_DSA_LEVEL3k:
+                sigAlg = CTC_ML_DSA_LEVEL3;
+                break;
+        case ML_DSA_LEVEL5k:
+                sigAlg = CTC_ML_DSA_LEVEL5;
+                break;
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
         case DILITHIUM_LEVEL2k:
                 sigAlg = CTC_DILITHIUM_LEVEL2;
                 break;
@@ -1125,6 +1233,7 @@ int getSigAlgForKey(SinglePrivateKey* key)
         case DILITHIUM_LEVEL5k:
                 sigAlg = CTC_DILITHIUM_LEVEL5;
                 break;
+#endif
         case FALCON_LEVEL1k:
                 sigAlg = CTC_FALCON_LEVEL1;
                 break;
@@ -1160,9 +1269,14 @@ void freeSinglePrivateKey(SinglePrivateKey* key)
                         case ECDSAk:
                                 wc_ecc_free(&key->key.ecc);
                                 break;
+                        case ML_DSA_LEVEL2k:
+                        case ML_DSA_LEVEL3k:
+                        case ML_DSA_LEVEL5k:
+                #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
                         case DILITHIUM_LEVEL2k:
                         case DILITHIUM_LEVEL3k:
                         case DILITHIUM_LEVEL5k:
+                #endif
                                 wc_dilithium_free(&key->key.dilithium);
                                 break;
                         case FALCON_LEVEL1k:

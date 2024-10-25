@@ -255,9 +255,15 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                                             &outputCert->ownKey.key.ecc,
                                             decodedCsr.pubKeySize);
         }
-        else if ((decodedCsr.keyOID == DILITHIUM_LEVEL2k) ||
+        else if (
+        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                 (decodedCsr.keyOID == DILITHIUM_LEVEL2k) ||
                  (decodedCsr.keyOID == DILITHIUM_LEVEL3k) ||
-                 (decodedCsr.keyOID == DILITHIUM_LEVEL5k))
+                 (decodedCsr.keyOID == DILITHIUM_LEVEL5k) ||
+        #endif
+                 (decodedCsr.keyOID == ML_DSA_LEVEL2k) ||
+                 (decodedCsr.keyOID == ML_DSA_LEVEL3k) ||
+                 (decodedCsr.keyOID == ML_DSA_LEVEL5k))
         {
                 wc_dilithium_init(&outputCert->ownKey.key.dilithium);
                 if (ret != 0)
@@ -265,18 +271,32 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
 
                 switch (decodedCsr.keyOID)
                 {
+                case ML_DSA_LEVEL2k:
+                        outputCert->ownKey.certKeyType = ML_DSA_LEVEL2_TYPE;
+                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, WC_ML_DSA_44);
+                        break;
+                case ML_DSA_LEVEL3k:
+                        outputCert->ownKey.certKeyType = ML_DSA_LEVEL3_TYPE;
+                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, WC_ML_DSA_65);
+                        break;
+                case ML_DSA_LEVEL5k:
+                        outputCert->ownKey.certKeyType = ML_DSA_LEVEL5_TYPE;
+                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, WC_ML_DSA_87);
+                        break;
+        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
                 case DILITHIUM_LEVEL2k:
                         outputCert->ownKey.certKeyType = DILITHIUM_LEVEL2_TYPE;
-                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, 2);
+                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, WC_ML_DSA_44_DRAFT);
                         break;
                 case DILITHIUM_LEVEL3k:
                         outputCert->ownKey.certKeyType = DILITHIUM_LEVEL3_TYPE;
-                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, 3);
+                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, WC_ML_DSA_65_DRAFT);
                         break;
                 case DILITHIUM_LEVEL5k:
                         outputCert->ownKey.certKeyType = DILITHIUM_LEVEL5_TYPE;
-                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, 5);
+                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, WC_ML_DSA_87_DRAFT);
                         break;
+        #endif
                 default:
                         ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported Dilithium key type: %d", decodedCsr.keyOID);
                 }

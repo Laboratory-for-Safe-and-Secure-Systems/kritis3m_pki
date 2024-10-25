@@ -83,9 +83,9 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
                 case ECDSAk:
                         type = PKCS11_KEY_TYPE_EC;
                         break;
-                case DILITHIUM_LEVEL2k:
-                case DILITHIUM_LEVEL3k:
-                case DILITHIUM_LEVEL5k:
+                case ML_DSA_LEVEL2k:
+                case ML_DSA_LEVEL3k:
+                case ML_DSA_LEVEL5k:
                         type = PKCS11_KEY_TYPE_DILITHIUM;
                         break;
                 case FALCON_LEVEL1k:
@@ -115,9 +115,9 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
                         case ECDSAk:
                                 type = PKCS11_KEY_TYPE_EC;
                                 break;
-                        case DILITHIUM_LEVEL2k:
-                        case DILITHIUM_LEVEL3k:
-                        case DILITHIUM_LEVEL5k:
+                        case ML_DSA_LEVEL2k:
+                        case ML_DSA_LEVEL3k:
+                        case ML_DSA_LEVEL5k:
                                 type = PKCS11_KEY_TYPE_DILITHIUM;
                                 break;
                         case FALCON_LEVEL1k:
@@ -374,8 +374,13 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         ret = wc_EccPublicKeyToDer(&key->key.ecc, request->altPubKeyDer,
                                                    (word32)ret, 1);
                 }
-                else if ((key->type == DILITHIUM_LEVEL2k) || (key->type == DILITHIUM_LEVEL3k) ||
-                        (key->type == DILITHIUM_LEVEL5k))
+                else if (
+                #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                         (key->type == DILITHIUM_LEVEL2k) || (key->type == DILITHIUM_LEVEL3k) ||
+                         (key->type == DILITHIUM_LEVEL5k) ||
+                #endif
+                         (key->type == ML_DSA_LEVEL2k) || (key->type == ML_DSA_LEVEL3k) ||
+                         (key->type == ML_DSA_LEVEL5k))
                 {
                         /* Get output size */
                         ret = wc_Dilithium_PublicKeyToDer(&key->key.dilithium, NULL, 0, 1);
