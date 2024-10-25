@@ -126,7 +126,7 @@ int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t bu
         if (ret != 0)
                 ERROR_OUT(ret, "Failed to import public key from issuer cert: %d", ret);
 
-
+#ifdef WOLFSSL_DUAL_ALG_CERTS
         if (decodedCert.extSapkiSet)
         {
                 if (issuerKey->alternativeKey.init == false)
@@ -146,6 +146,7 @@ int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t bu
                 if (ret != 0)
                         ERROR_OUT(ret, "Failed to import alternative public key from issuer cert: %d", ret);
         }
+#endif
 
         /* Allocate buffer for the decoded certificate */
         cert->buffer = (uint8_t*) malloc(der->length);
@@ -376,6 +377,7 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                         ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to copy altNames: %d", ret);
         }
 
+#ifdef WOLFSSL_DUAL_ALG_CERTS
         /* Copy the SubjectAltPublicKeyInfoExtension */
         if (decodedCsr.extSapkiSet && decodedCsr.sapkiDer != NULL)
         {
@@ -395,6 +397,7 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 if (ret < 0)
                         ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR, "Failed to copy alternative public key from CSR: %d", ret);
         }
+#endif
 
         ret = KRITIS3M_PKI_SUCCESS;
 
@@ -424,6 +427,7 @@ int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert, Pri
         if (outputCert->cert.sigType <= 0)
                 ERROR_OUT(outputCert->cert.sigType, "Failed to get signature algorithm for issuer key");
 
+#ifdef WOLFSSL_DUAL_ALG_CERTS
         /* If we issue a hybrid certificate, write the signature algorithm of the issuer */
         if (issuerKey->alternativeKey.init == true)
         {
@@ -454,6 +458,7 @@ int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert, Pri
                 if (ret < 0)
                         ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR, "Failed to write alternative signature algorithm: %d", ret);
         }
+#endif
 
         /* Set the Subject Key Identifier to our own key */
         ret = wc_SetSubjectKeyIdFromPublicKey_ex(&outputCert->cert, outputCert->ownKey.certKeyType,
@@ -490,12 +495,116 @@ cleanup:
 }
 
 
+static inline uint8_t itob(int number)
+{
+        return (uint8_t)number + 0x30;
+}
+
+
+/* write time to output, format */
+static void SetTime(struct tm* date, uint8_t* output, int* output_size)
+{
+        int i = 0;
+
+        output[i++] = itob((date->tm_year % 10000) / 1000);
+        output[i++] = itob((date->tm_year % 1000)  /  100);
+        output[i++] = itob((date->tm_year % 100)   /   10);
+        output[i++] = itob( date->tm_year % 10);
+
+        output[i++] = itob(date->tm_mon / 10);
+        output[i++] = itob(date->tm_mon % 10);
+
+        output[i++] = itob(date->tm_mday / 10);
+        output[i++] = itob(date->tm_mday % 10);
+
+        output[i++] = itob(date->tm_hour / 10);
+        output[i++] = itob(date->tm_hour % 10);
+
+        output[i++] = itob(date->tm_min / 10);
+        output[i++] = itob(date->tm_min % 10);
+
+        output[i++] = itob(date->tm_sec / 10);
+        output[i++] = itob(date->tm_sec % 10);
+
+        output[i++] = 'Z';  /* Zulu profile */
+
+        *output_size = i;
+}
+
+
+static int SetValidity(uint8_t* before, int* before_size,
+                       uint8_t* after, int* after_size,
+                       int daysValid)
+{
+        int ret = 0;
+        time_t now;
+        time_t then;
+        struct tm* tmpTime;
+        struct tm* expandedTime;
+        struct tm localTime;
+#if defined(NEED_TMP_TIME)
+        /* for use with gmtime_r */
+        struct tm tmpTimeStorage;
+        tmpTime = &tmpTimeStorage;
+#else
+        tmpTime = NULL;
+#endif
+        (void)tmpTime;
+
+        now = wc_Time(0);
+
+        /* subtract 1 day of seconds for more compliance */
+        then = now - 86400;
+        expandedTime = XGMTIME(&then, tmpTime);
+        if (ret == 0)
+        {
+                localTime = *expandedTime;
+
+                /* adjust */
+                localTime.tm_year += 1900;
+                localTime.tm_mon +=    1;
+
+                SetTime(&localTime, before, before_size);
+
+                /* add daysValid of seconds */
+                then = now + (daysValid * (time_t)86400);
+                expandedTime = XGMTIME(&then, tmpTime);
+        }
+        if (ret == 0)
+        {
+                localTime = *expandedTime;
+
+                /* adjust */
+                localTime.tm_year += 1900;
+                localTime.tm_mon  +=    1;
+
+                SetTime(&localTime, after, after_size);
+        }
+
+        return ret;
+}
+
+
 /* Set the validity period to `days` days of the new OutputCert `outputCert`.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-void outputCert_setValidity(OutputCert* outputCert, int days)
+int outputCert_setValidity(OutputCert* outputCert, int days)
 {
         if (outputCert != NULL)
+        {
                 outputCert->cert.daysValid = days;
+
+                int ret = SetValidity(outputCert->cert.beforeDate + 2, &outputCert->cert.beforeDateSz,
+                                      outputCert->cert.afterDate + 2, &outputCert->cert.afterDateSz,
+                                      days);
+                if (ret != 0)
+                        return KRITIS3M_PKI_CERT_ERROR;
+                else
+                        return KRITIS3M_PKI_SUCCESS;
+        }
+        else
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
 }
 
 
@@ -566,44 +675,21 @@ int outputCert_finalize(OutputCert* outputCert, PrivateKey* issuerKey, uint8_t* 
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_CERT_SIGN_ERROR, "Failed to initialize RNG: %d", ret);
 
+#ifdef WOLFSSL_DUAL_ALG_CERTS
         /* Check if have to create the alternative signature */
         if (issuerKey->alternativeKey.init == true)
         {
-                /* Generate a temporary cert to generate the TBS from it */
+                /* Store the original signature type. We have to set that to zero here in order
+                 * to generate the PreTBS certificate with wc_MakeCert_ex(). */
+                int sigType = outputCert->cert.sigType;
+                outputCert->cert.sigType = 0;
+
+                /* Generate the PreTBS */
                 ret = wc_MakeCert_ex(&outputCert->cert, derBuffer, LARGE_TEMP_SZ,
                                      outputCert->ownKey.certKeyType,
                                      &outputCert->ownKey.key, &rng);
                 if (ret <= 0)
                         ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to generate temporary certificate: %d", ret);
-
-                /* Sign temporary cert. Only needed so wc_ParseCert() doesn't fail down below. */
-                ret = wc_SignCert_ex(outputCert->cert.bodySz, outputCert->cert.sigType,
-                                     derBuffer, LARGE_TEMP_SZ, issuerKey->primaryKey.certKeyType,
-                                     &issuerKey->primaryKey.key, &rng);
-                if (ret <= 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_SIGN_ERROR, "Failed to sign temporary certificate: %d", ret);
-
-                derSize = ret;
-
-                /* Extract the TBS data for signing with alternative key */
-                InitDecodedCert(&decodedCert, derBuffer, derSize, 0);
-                ret = ParseCert(&decodedCert, CERT_TYPE, NO_VERIFY, NULL);
-                decodedCertInit = true;
-                if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to parse temporary certificate: %d", ret);
-
-                /* Set the validity dates of the decoded cert for the new cert. This is
-                 * necessary as we have to make sure that the signed preTBS data is exactly
-                 * the same as the data that lands in the final cert. */
-                memcpy(outputCert->cert.beforeDate, decodedCert.beforeDate, decodedCert.beforeDateLen);
-                outputCert->cert.beforeDateSz = decodedCert.beforeDateLen;
-                memcpy(outputCert->cert.afterDate, decodedCert.afterDate, decodedCert.afterDateLen);
-                outputCert->cert.afterDateSz = decodedCert.afterDateLen;
-
-                ret = wc_GeneratePreTBS(&decodedCert, derBuffer, LARGE_TEMP_SZ);
-                if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to generate preTBS data: %d", ret);
-
                 derSize = ret;
 
                 /* Allocate buffer for the alternative signature */
@@ -625,7 +711,11 @@ int outputCert_finalize(OutputCert* outputCert, PrivateKey* issuerKey, uint8_t* 
                                             outputCert->altSigValDer, ret);
                 if (ret < 0)
                         ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR, "Failed to write alternative signature: %d", ret);
+
+                /* Restore the original signature type */
+                outputCert->cert.sigType = sigType;
         }
+#endif
 
         /* Finally, generate the final certificate. */
         ret = wc_MakeCert_ex(&outputCert->cert, derBuffer, LARGE_TEMP_SZ,

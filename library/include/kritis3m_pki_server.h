@@ -70,8 +70,10 @@ KRITIS3M_PKI_API int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert
 
 
 /* Set the validity period to `days` days of the new OutputCert `outputCert`.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-KRITIS3M_PKI_API void outputCert_setValidity(OutputCert* outputCert, int days);
+KRITIS3M_PKI_API int outputCert_setValidity(OutputCert* outputCert, int days);
 
 
 /* Configure the new OutputCert to be a CA certificate, capable of signing new certificates.

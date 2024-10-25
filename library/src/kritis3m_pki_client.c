@@ -101,6 +101,7 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "Failed to import primary key: %d", ret);
 
+#ifdef WOLFSSL_DUAL_ALG_CERTS
         /* Import the alternative key */
         if (key->alternativeKey.init == true)
         {
@@ -132,6 +133,7 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "Failed to import alternative key: %d", ret);
         }
+#endif
 
 cleanup:
         return ret;
@@ -330,6 +332,7 @@ cleanup:
 }
 
 
+#ifdef WOLFSSL_DUAL_ALG_CERTS
 static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
@@ -480,6 +483,7 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
 cleanup:
         return ret;
 }
+#endif
 
 
 /* Finalize the SigningRequest using the related private key. Store the final PEM encoded output
@@ -516,6 +520,7 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
         if (request->req.sigType <= 0)
                 ERROR_OUT(request->req.sigType, "Failed to get signature algorithm for key");
 
+#ifdef WOLFSSL_DUAL_ALG_CERTS
         /* Check if have to create an alternative signature */
         if (key->alternativeKey.init == true)
         {
@@ -573,6 +578,7 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
                 if (ret < 0)
                         ERROR_OUT(KRITIS3M_PKI_CSR_EXT_ERROR, "Failed to store alt signature value in CSR: %d", ret);
         }
+#endif
 
         /* Generate the final CSR */
         ret = wc_MakeCertReq_ex(&request->req, derBuffer, LARGE_TEMP_SZ,
