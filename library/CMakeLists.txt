@@ -28,6 +28,10 @@ option(KRITIS3M_PKI_EXTERNAL_WOLFSSL "Use external WolfSSL library" OFF)
 option(KRITIS3M_PKI_COMBINED_STATIC_LIB "Create a combined static library" OFF)
 
 
+# Make sure all libraries are installed in the lib directory (not lib64)
+set(CMAKE_INSTALL_LIBDIR "lib")
+
+
 # Pull in WolfSSL as dependency (either as an external library or as a subproject)
 if(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
         # Search for system-wide installed WolfSSL
