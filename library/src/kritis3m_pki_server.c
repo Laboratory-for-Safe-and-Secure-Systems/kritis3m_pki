@@ -212,7 +212,7 @@ OutputCert* outputCert_new(void)
 int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t buffer_size)
 {
         int ret = 0;
-        int index = 0;
+        uint32_t index = 0;
         DerBuffer* der = NULL;
         DecodedCert decodedCsr;
         bool decodedCsrInit = false;

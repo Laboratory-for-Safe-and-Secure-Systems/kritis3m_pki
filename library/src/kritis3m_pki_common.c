@@ -515,7 +515,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
 
         /* Try RSA */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode RSA key");
-        if (ret = initPrivateKey(key, RSAk) != 0)
+        if ((ret = initPrivateKey(key, RSAk)) != 0)
                 return ret;
         ret = wc_RsaPrivateKeyDecode(der->buffer, &index, &key->key.rsa, der->length);
         if (ret == 0)
@@ -527,7 +527,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try ECC */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode ECC key");
         index = 0;
-        if (ret = initPrivateKey(key, ECDSAk) != 0)
+        if ((ret = initPrivateKey(key, ECDSAk)) != 0)
                 return ret;
         ret = wc_EccPrivateKeyDecode(der->buffer, &index, &key->key.ecc, der->length);
         if (ret == 0)
@@ -539,7 +539,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try ML-DSA 44 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode ML-DSA 44 key");
         index = 0;
-        if (ret = initPrivateKey(key, ML_DSA_LEVEL2k) != 0)
+        if ((ret = initPrivateKey(key, ML_DSA_LEVEL2k)) != 0)
                 return ret;
         ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index, &key->key.dilithium, der->length);
         if (ret == 0)
@@ -551,7 +551,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try ML-DSA 65 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode ML-DSA 65 key");
         index = 0;
-        if (ret = initPrivateKey(key, ML_DSA_LEVEL3k) != 0)
+        if ((ret = initPrivateKey(key, ML_DSA_LEVEL3k)) != 0)
                 return ret;
         ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index, &key->key.dilithium, der->length);
         if (ret == 0)
@@ -563,7 +563,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try ML-DSA 87 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode ML-DSA 87 key");
         index = 0;
-        if (ret = initPrivateKey(key, ML_DSA_LEVEL5k) != 0)
+        if ((ret = initPrivateKey(key, ML_DSA_LEVEL5k)) != 0)
                 return ret;
         ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index, &key->key.dilithium, der->length);
         if (ret == 0)
@@ -576,7 +576,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try Dilithium Level 2 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Dilithium Level 2 key");
         index = 0;
-        if (ret = initPrivateKey(key, DILITHIUM_LEVEL2k) != 0)
+        if ((ret = initPrivateKey(key, DILITHIUM_LEVEL2k)) != 0)
                 return ret;
         ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index, &key->key.dilithium, der->length);
         if (ret == 0)
@@ -588,7 +588,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try Dilithium Level 3 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Dilithium Level 3 key");
         index = 0;
-        if (ret = initPrivateKey(key, DILITHIUM_LEVEL3k) != 0)
+        if ((ret = initPrivateKey(key, DILITHIUM_LEVEL3k)) != 0)
                 return ret;
         ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index, &key->key.dilithium, der->length);
         if (ret == 0)
@@ -600,7 +600,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try Dilithium Level 5 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Dilithium Level 5 key");
         index = 0;
-        if (ret = initPrivateKey(key, DILITHIUM_LEVEL5k) != 0)
+        if ((ret = initPrivateKey(key, DILITHIUM_LEVEL5k)) != 0)
                 return ret;
         ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index, &key->key.dilithium, der->length);
         if (ret == 0)
@@ -613,7 +613,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try Falcon Level 1 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Falcon Level 1 key");
         index = 0;
-        if (ret = initPrivateKey(key, FALCON_LEVEL1k) != 0)
+        if ((ret = initPrivateKey(key, FALCON_LEVEL1k)) != 0)
                 return ret;
         ret = wc_Falcon_PrivateKeyDecode(der->buffer, &index, &key->key.falcon, der->length);
         if (ret == 0)
@@ -625,7 +625,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try Falcon Level 5 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Falcon Level 5 key");
         index = 0;
-        if (ret = initPrivateKey(key, FALCON_LEVEL5k) != 0)
+        if ((ret = initPrivateKey(key, FALCON_LEVEL5k)) != 0)
                 return ret;
         ret = wc_Falcon_PrivateKeyDecode(der->buffer, &index, &key->key.falcon, der->length);
         if (ret == 0)
@@ -637,7 +637,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try Ed25519 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Ed25519 key");
         index = 0;
-        if (ret = initPrivateKey(key, ED25519k) != 0)
+        if ((ret = initPrivateKey(key, ED25519k)) != 0)
                 return ret;
         ret = wc_Ed25519PrivateKeyDecode(der->buffer, &index, &key->key.ed25519, der->length);
         if (ret == 0)
@@ -649,7 +649,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         /* Try Ed448 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Ed448 key");
         index = 0;
-        if (ret = initPrivateKey(key, ED448k) != 0)
+        if ((ret = initPrivateKey(key, ED448k)) != 0)
                 return ret;
         ret = wc_Ed448PrivateKeyDecode(der->buffer, &index, &key->key.ed448, der->length);
         if (ret == 0)

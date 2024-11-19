@@ -47,7 +47,7 @@ if (NOT MSVC)
                 -fdata-sections
                 -ffunction-sections
                 # -Wa,--noexecstack
-                -Wl,--gc-sections
+                # -Wl,--gc-sections
         )
 endif()
 
@@ -70,7 +70,7 @@ if (NOT MSVC)
                 -fdata-sections
                 -ffunction-sections
                 # -Wa,--noexecstack
-                -Wl,--gc-sections
+                # -Wl,--gc-sections
         )
 endif()
 
@@ -155,7 +155,7 @@ if(KRITIS3M_PKI_INCLUDE_WOLFPKCS11)
                         -fdata-sections
                         -ffunction-sections
                         # -Wa,--noexecstack
-                        -Wl,--gc-sections
+                        # -Wl,--gc-sections
                 )
         endif()
 
