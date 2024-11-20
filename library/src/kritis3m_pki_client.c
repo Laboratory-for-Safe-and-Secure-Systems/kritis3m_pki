@@ -88,10 +88,12 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
                 case ML_DSA_LEVEL5k:
                         type = PKCS11_KEY_TYPE_DILITHIUM;
                         break;
+        #ifdef HAVE_FALCON
                 case FALCON_LEVEL1k:
                 case FALCON_LEVEL5k:
                         type = PKCS11_KEY_TYPE_FALCON;
                         break;
+        #endif
                 default:
                         ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported primary key type");
         }
@@ -120,10 +122,12 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
                         case ML_DSA_LEVEL5k:
                                 type = PKCS11_KEY_TYPE_DILITHIUM;
                                 break;
+                #ifdef HAVE_FALCON
                         case FALCON_LEVEL1k:
                         case FALCON_LEVEL5k:
                                 type = PKCS11_KEY_TYPE_FALCON;
                                 break;
+                #endif
                         default:
                                 ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported alternative key type");
                 }
@@ -396,6 +400,7 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         ret = wc_Dilithium_PublicKeyToDer(&key->key.dilithium, request->altPubKeyDer,
                                                           (word32)ret, 1);
                 }
+        #ifdef HAVE_FALCON
                 else if ((key->type == FALCON_LEVEL1k) || (key->type == FALCON_LEVEL5k))
                 {
                         /* Get output size */
@@ -412,6 +417,7 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         ret = wc_Falcon_PublicKeyToDer(&key->key.falcon, request->altPubKeyDer,
                                                        (word32)ret, 1);
                 }
+        #endif
                 else if (key->type == ED25519k)
                 {
                         /* Get output size */

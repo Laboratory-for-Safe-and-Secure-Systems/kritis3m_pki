@@ -44,7 +44,9 @@ typedef struct singlePrivateKey
                 ecc_key ecc;
                 RsaKey rsa;
                 dilithium_key dilithium;
+        #ifdef HAVE_FALCON
                 falcon_key falcon;
+        #endif
                 ed25519_key ed25519;
                 ed448_key ed448;
         } key;

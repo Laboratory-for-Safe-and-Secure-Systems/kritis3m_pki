@@ -301,6 +301,7 @@ int initPrivateKey(SinglePrivateKey* key, int type)
 
                 key->type = type;
         }
+#ifdef HAVE_FALCON
         else if ((type == FALCON_LEVEL1k) || (type == FALCON_LEVEL5k))
         {
                 if (key->external.label != NULL)
@@ -330,6 +331,7 @@ int initPrivateKey(SinglePrivateKey* key, int type)
 
                 key->type = type;
         }
+#endif
         else if (type == ED25519k)
         {
                 if (key->external.label != NULL)
@@ -423,11 +425,13 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
                 ret = wc_Dilithium_PublicKeyDecode(pubKey, &idx, &key->key.dilithium,
                                                         pubKeySize);
         }
+        #ifdef HAVE_FALCON
         else if ((type == FALCON_LEVEL1k) || (type == FALCON_LEVEL5k))
         {
                 ret = wc_Falcon_PublicKeyDecode(pubKey, &idx, &key->key.falcon,
                                                 pubKeySize);
         }
+        #endif
         else if (type == ED25519k)
         {
                 ret = wc_Ed25519PublicKeyDecode(pubKey, &idx, &key->key.ed25519,
@@ -473,6 +477,7 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
                 // else
                         ret = wc_dilithium_check_key(&key->key.dilithium);
         }
+        #ifdef HAVE_FALCON
         else if ((type == FALCON_LEVEL1k) || (type == FALCON_LEVEL5k))
         {
                 // if (key->external.label != NULL)
@@ -482,6 +487,7 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
                         /* Not supported currently... */
                         // ret = wc_falcon_check_key(&key->key.falcon);
         }
+        #endif
         else if (type == ED25519k)
         {
                 // if (key->external.label != NULL)
@@ -610,6 +616,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
                 freeSinglePrivateKey(key);
 #endif
 
+#ifdef HAVE_FALCON
         /* Try Falcon Level 1 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Falcon Level 1 key");
         index = 0;
@@ -633,6 +640,7 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
                 return KRITIS3M_PKI_SUCCESS;
         else
                 freeSinglePrivateKey(key);
+#endif
 
         /* Try Ed25519 */
         pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "Trying to decode Ed25519 key");
@@ -704,9 +712,11 @@ static int parsePemBuffer(uint8_t const* buffer, size_t buffer_size, SinglePriva
                          (key->type == ML_DSA_LEVEL5k))
                         ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index,
                                         &key->key.dilithium, der->length);
+        #ifdef HAVE_FALCON
                 else if ((key->type == FALCON_LEVEL1k) || (key->type == FALCON_LEVEL5k))
                         ret = wc_Falcon_PrivateKeyDecode(der->buffer, &index,
                                         &key->key.falcon, der->length);
+        #endif
                 else if (key->type == ED25519k)
                 {
                         ret = wc_Ed25519PrivateKeyDecode(der->buffer, &index,
@@ -1005,6 +1015,7 @@ int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size
                 // ret = wc_Dilithium_KeyToDer(&key->key.dilithium, derBuffer, derSize);
                 ret = wc_Dilithium_PrivateKeyToDer(&key->key.dilithium, derBuffer, derSize);
         }
+#ifdef HAVE_FALCON
         else if ((key->type == FALCON_LEVEL1k) ||
                  (key->type == FALCON_LEVEL5k))
         {
@@ -1012,6 +1023,7 @@ int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size
                 // ret = wc_Falcon_KeyToDer(&key->key.falcon, derBuffer, derSize);
                 ret = wc_Falcon_PrivateKeyToDer(&key->key.falcon, derBuffer, derSize);
         }
+#endif
         else if (key->type == ED25519k)
         {
                 /* Encode the key and store it in DER encoding */
@@ -1234,12 +1246,14 @@ int getSigAlgForKey(SinglePrivateKey* key)
                 sigAlg = CTC_DILITHIUM_LEVEL5;
                 break;
 #endif
+#ifdef HAVE_FALCON
         case FALCON_LEVEL1k:
                 sigAlg = CTC_FALCON_LEVEL1;
                 break;
         case FALCON_LEVEL5k:
                 sigAlg = CTC_FALCON_LEVEL5;
                 break;
+#endif
         case ED25519k:
                 sigAlg = CTC_ED25519;
                 break;
@@ -1279,10 +1293,12 @@ void freeSinglePrivateKey(SinglePrivateKey* key)
                 #endif
                                 wc_dilithium_free(&key->key.dilithium);
                                 break;
+                #ifdef HAVE_FALCON
                         case FALCON_LEVEL1k:
                         case FALCON_LEVEL5k:
                                 wc_falcon_free(&key->key.falcon);
                                 break;
+                #endif
                         case ED25519k:
                                 wc_ed25519_free(&key->key.ed25519);
                                 break;

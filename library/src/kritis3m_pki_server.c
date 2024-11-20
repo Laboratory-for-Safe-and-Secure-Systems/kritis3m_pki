@@ -306,6 +306,7 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 ret = wc_Dilithium_PublicKeyDecode(decodedCsr.publicKey, &index,
                                 &outputCert->ownKey.key.dilithium, decodedCsr.pubKeySize);
         }
+#ifdef HAVE_FALCON
         else if ((decodedCsr.keyOID == FALCON_LEVEL1k) || (decodedCsr.keyOID == FALCON_LEVEL5k))
         {
                 wc_falcon_init(&outputCert->ownKey.key.falcon);
@@ -331,6 +332,7 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 ret = wc_Falcon_PublicKeyDecode(decodedCsr.publicKey, &index,
                                 &outputCert->ownKey.key.falcon, decodedCsr.pubKeySize);
         }
+#endif
         else if (decodedCsr.keyOID == ED25519k)
         {
                 wc_ed25519_init(&outputCert->ownKey.key.ed25519);
