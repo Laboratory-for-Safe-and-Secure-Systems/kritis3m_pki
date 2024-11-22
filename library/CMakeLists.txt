@@ -153,13 +153,6 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
 
 # Install CMake configuration files so other CMake projects can find the libraries
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kritis3m_pki_server-config.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_server
-)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kritis3m_pki_client-config.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_client
-)
-
 install(EXPORT kritis3m_pki_common-export
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_common
         FILE kritis3m_pki_common-export.cmake
@@ -182,6 +175,26 @@ install(EXPORT kritis3m_pki_client-export
 )
 export(EXPORT kritis3m_pki_client-export
        FILE kritis3m_pki_client-export.cmake
+)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/kritis3m_pki_server-config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/kritis3m_pki_server-config.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_server
+        NO_SET_AND_CHECK_MACRO
+        NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/kritis3m_pki_client-config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/kritis3m_pki_client-config.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_client
+        NO_SET_AND_CHECK_MACRO
+        NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/kritis3m_pki_server-config.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_server
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/kritis3m_pki_client-config.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kritis3m_pki_client
 )
 
 # Generate pkg-config files

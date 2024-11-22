@@ -1,0 +1,5 @@
+@PACKAGE_INIT@
+
+include ("${CMAKE_CURRENT_LIST_DIR}/../kritis3m_pki_common/kritis3m_pki_common-export.cmake")
+include ("${CMAKE_CURRENT_LIST_DIR}/kritis3m_pki_client-export.cmake")
+
