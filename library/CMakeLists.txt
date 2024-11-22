@@ -24,6 +24,10 @@ option(KRITIS3M_PKI_STANDALONE "Use standalone WolfSSL" ON)
 # Use an externally installed WolfSSL library. If disabled, WolfSSL will be built.
 option(KRITIS3M_PKI_EXTERNAL_WOLFSSL "Use external WolfSSL library" OFF)
 
+# Enable support for the PQC signature algorithm FALCON (FN-DSA) via the additional
+# library liboqs. When disabled, the library will not be built.
+option(KRITIS3M_PKI_ENABLE_FALCON "Enable FALCON (FN-DSA) signature algorithm" ON)
+
 # Create a combined static library that includes all dependencies
 option(KRITIS3M_PKI_COMBINED_STATIC_LIB "Create a combined static library" OFF)
 
@@ -34,8 +38,14 @@ set(CMAKE_INSTALL_LIBDIR "lib")
 
 # Pull in WolfSSL as dependency (either as an external library or as a subproject)
 if(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
+        # Search for system-wide installed libraries in both lib and lib64 paths
+        set(FIND_LIBRARY_USE_LIB32_PATHS TRUE)
+        set(FIND_LIBRARY_USE_LIB64_PATHS TRUE)
+
         # Search for system-wide installed WolfSSL
-        find_package(liboqs REQUIRED)
+        if(KRITIS3M_PKI_ENABLE_FALCON)
+                find_package(liboqs REQUIRED)
+        endif()
         find_package(wolfssl REQUIRED)
 
 else(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
@@ -49,6 +59,7 @@ else(KRITIS3M_PKI_EXTERNAL_WOLFSSL)
 
         # Configuration
         set(KRITIS3M_WOLFSSL_STANDALONE ${KRITIS3M_PKI_STANDALONE})
+        set(KRITIS3M_WOLFSSL_ENABLE_FALCON ${KRITIS3M_PKI_ENABLE_FALCON})
 
         # Actually add the external repositories to our project
         FetchContent_GetProperties(kritis3m_wolfssl)
@@ -197,7 +208,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/kritis3m_pki_client.pc
 
 
 # Create combined static libraries that include all dependencies for a PKI client or server
-if (NOT BUILD_SHARED_LIBS AND KRITIS3M_PKI_COMBINED_STATIC_LIB)
+if (NOT BUILD_SHARED_LIBS AND KRITIS3M_PKI_COMBINED_STATIC_LIB AND KRITIS3M_PKI_ENABLE_FALCON)
         set(LIBNAME_SERVER "libkritis3m_pki_server_full.a")
         set(LIBNAME_CLIENT "libkritis3m_pki_client_full.a")
         set(WOLFSSL_TARGET_NAME "wolfssl")
