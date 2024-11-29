@@ -84,9 +84,12 @@ int initPkcs11Token(Pkcs11Dev* device, Pkcs11Token* token, char const* path, int
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
 
         /* Initialize the PKCS#11 library */
-        ret = wc_Pkcs11_Initialize(device, path, NULL);
+        int pkcs11_version = WC_PCKS11VERSION_3_2;
+        ret = wc_Pkcs11_Initialize_ex(device, path, NULL, &pkcs11_version, "PKCS 11", NULL);
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "PKCS#11 library initialization failed: %d", ret);
+        if (pkcs11_version != WC_PCKS11VERSION_3_2)
+                pki_log(KRITIS3M_PKI_LOG_LEVEL_WRN, "No PQC capable PKCS#11 version: %d", device->version);
 
         /* Initialize the token */
         if (pin != NULL && pin_size > 0)
