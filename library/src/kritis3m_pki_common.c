@@ -986,6 +986,30 @@ int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size
         if (key->init == false)
                 return KRITIS3M_PKI_KEY_ERROR;
 
+        if (buffer == NULL || buffer_size == NULL || *buffer_size == 0)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        /* Check if the private key is an external referenced one */
+        if (key->external.label != NULL)
+        {
+                /* We cannot export the private key. However, we write the
+                 * PKCS#11 label to the buffer to store the label for later
+                 * use. */
+                size_t label_size = strlen(key->external.label);
+                if (*buffer_size < (label_size + PKCS11_LABEL_IDENTIFIER_LEN + 1))
+                        return KRITIS3M_PKI_MEMORY_ERROR;
+
+                /* Copy identifier */
+                memcpy(buffer, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN);
+
+                /* Copy label */
+                strcpy((char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN, key->external.label);
+
+                *buffer_size = label_size + PKCS11_LABEL_IDENTIFIER_LEN + 1;
+
+                return KRITIS3M_PKI_SUCCESS;
+        }
+
         /* Allocate temporary buffers */
         uint8_t* derBuffer = (uint8_t*) malloc(LARGE_TEMP_SZ);
         word32 derSize = LARGE_TEMP_SZ;

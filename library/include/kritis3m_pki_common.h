@@ -31,6 +31,10 @@
 #endif /* BUILDING_KRITIS3M_PKI */
 
 
+#define PKCS11_LABEL_IDENTIFIER "pkcs11:"
+#define PKCS11_LABEL_IDENTIFIER_LEN 7
+
+
 /* Forward declarations of our data types.
  * The actual declarations are in the source file to hide
  * the internal dependencies. */

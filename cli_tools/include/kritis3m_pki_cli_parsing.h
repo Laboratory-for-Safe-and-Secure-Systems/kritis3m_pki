@@ -9,9 +9,6 @@
 #include "kritis3m_pki_client.h"
 
 
-#define PKCS11_LABEL_IDENTIFIER "pkcs11:"
-#define PKCS11_LABEL_IDENTIFIER_LEN 7
-
 
 typedef struct
 {
