@@ -1,37 +1,37 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
 #include <errno.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "logging.h"
 
 #include "wolfssl/wolfcrypt/pkcs11.h"
 #include "wolfssl/wolfcrypt/wc_pkcs11.h"
 
-
 LOG_MODULE_CREATE(wolfpkcs11_provision);
 
+#define ERROR_OUT(...)                                                                             \
+        {                                                                                          \
+                LOG_ERROR(__VA_ARGS__);                                                            \
+                ret = 1;                                                                           \
+                goto exit;                                                                         \
+        }
 
-#define ERROR_OUT(...) { LOG_ERROR(__VA_ARGS__); ret = 1; goto exit; }
-
-
-static const struct option cli_options[] =
-{
-        { "module_label", required_argument, 0, 0x01 },
-        { "so_pin",       required_argument, 0, 0x02 },
-        { "user_pin",     required_argument, 0, 0x03 },
-        { "module_path",  required_argument, 0, 0x04 },
-        { "verbose",      no_argument,       0, 'v'  },
-        { "debug",        no_argument,       0, 'd'  },
-        { "help",         no_argument,       0, 'h'  },
-        { NULL, 0, NULL, 0}
+static const struct option cli_options[] = {
+        {"module_label", required_argument, 0, 0x01},
+        {"so_pin", required_argument, 0, 0x02},
+        {"user_pin", required_argument, 0, 0x03},
+        {"module_path", required_argument, 0, 0x04},
+        {"verbose", no_argument, 0, 'v'},
+        {"debug", no_argument, 0, 'd'},
+        {"help", no_argument, 0, 'h'},
+        {NULL, 0, NULL, 0},
 };
 
-
-void print_help(char *prog_name)
+void print_help(char* prog_name)
 {
         printf("Usage: %s [OPTIONS]\r\n", prog_name);
         printf("Options:\r\n");
@@ -43,7 +43,6 @@ void print_help(char *prog_name)
         printf("  -d --debug                   Enable debug output\r\n");
         printf("  -h --help                    Print this help\r\n");
 }
-
 
 int main(int argc, char** argv)
 {
@@ -77,32 +76,32 @@ int main(int argc, char** argv)
 
                 switch (result)
                 {
-                        case 0x01: /* module_label */
-                                moduleLabel = optarg;
-                                break;
-                        case 0x02: /* so_pin */
-                                soPin = optarg;
-                                break;
-                        case 0x03: /* user_pin */
-                                userPin = optarg;
-                                break;
-                        case 0x04: /* module_path */
-                                modulePath = optarg;
-                                break;
-                        case 'v':
-                                LOG_LVL_SET(LOG_LVL_INFO);
-                                break;
-                        case 'd':
-                                LOG_LVL_SET(LOG_LVL_DEBUG);
-                                break;
-                        case 'h':
-                                print_help(argv[0]);
-                                exit(0);
-                                break;
-                        default:
-                                fprintf(stderr, "unknown option: %c\n", result);
-                                print_help(argv[0]);
-                                exit(-1);
+                case 0x01: /* module_label */
+                        moduleLabel = optarg;
+                        break;
+                case 0x02: /* so_pin */
+                        soPin = optarg;
+                        break;
+                case 0x03: /* user_pin */
+                        userPin = optarg;
+                        break;
+                case 0x04: /* module_path */
+                        modulePath = optarg;
+                        break;
+                case 'v':
+                        LOG_LVL_SET(LOG_LVL_INFO);
+                        break;
+                case 'd':
+                        LOG_LVL_SET(LOG_LVL_DEBUG);
+                        break;
+                case 'h':
+                        print_help(argv[0]);
+                        exit(0);
+                        break;
+                default:
+                        fprintf(stderr, "unknown option: %c\n", result);
+                        print_help(argv[0]);
+                        exit(-1);
                 }
         }
 
@@ -113,7 +112,10 @@ int main(int argc, char** argv)
         deviceInitialized = true;
 
         /* Initialize token. This sets the module label and the security officer PIN */
-        rv = device.func->C_InitToken(1, (CK_UTF8CHAR_PTR)soPin, strlen(soPin), (CK_UTF8CHAR_PTR)moduleLabel);
+        rv = device.func->C_InitToken(1,
+                                      (CK_UTF8CHAR_PTR) soPin,
+                                      strlen(soPin),
+                                      (CK_UTF8CHAR_PTR) moduleLabel);
         if (rv != CKR_OK)
                 ERROR_OUT("Unable to initialize token: %d", rv);
 
@@ -129,12 +131,12 @@ int main(int argc, char** argv)
                 ERROR_OUT("Unable to open session: %d", ret);
 
         /* Login as SO */
-        rv = token.func->C_Login(token.handle, CKU_SO, (CK_UTF8CHAR_PTR)soPin, strlen(soPin));
+        rv = token.func->C_Login(token.handle, CKU_SO, (CK_UTF8CHAR_PTR) soPin, strlen(soPin));
         if (rv != CKR_OK)
                 ERROR_OUT("Unable to login as SO: %d", rv);
 
         /* Set the user PIN */
-        rv = token.func->C_InitPIN(token.handle, (CK_UTF8CHAR_PTR)userPin, strlen(userPin));
+        rv = token.func->C_InitPIN(token.handle, (CK_UTF8CHAR_PTR) userPin, strlen(userPin));
         if (rv != CKR_OK)
                 ERROR_OUT("Unable to set user PIN: %d", rv);
 
@@ -142,14 +144,13 @@ int main(int argc, char** argv)
         wc_Pkcs11Token_Close(&token);
 
         /* Open the token as user with login */
-        ret = wc_Pkcs11Token_Init(&token, &device, -1, NULL, (unsigned char*)userPin, strlen(userPin));
+        ret = wc_Pkcs11Token_Init(&token, &device, -1, NULL, (unsigned char*) userPin, strlen(userPin));
         if (ret != 0)
                 ERROR_OUT("Unable to init token: %d", ret);
 
         ret = wc_Pkcs11Token_Open(&token, 1);
         if (ret != 0)
                 ERROR_OUT("Unable to open user session: %d", ret);
-
 
 exit:
         if (tokenInitialized)
@@ -160,4 +161,3 @@ exit:
 
         return ret;
 }
-

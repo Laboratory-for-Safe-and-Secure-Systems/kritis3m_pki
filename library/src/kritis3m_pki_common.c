@@ -3,7 +3,6 @@
 
 #include <string.h>
 
-
 /* Print a human-readable error message for the provided error code. */
 char const* kritis3m_pki_error_message(int error_code)
 {
@@ -42,7 +41,6 @@ char const* kritis3m_pki_error_message(int error_code)
         }
 }
 
-
 /* Initialize the KRITIS3M PKI libraries.
  *
  * Parameter is a pointer to a filled kritis3m_pki_configuration structure.
@@ -67,16 +65,19 @@ int kritis3m_pki_init(kritis3m_pki_configuration const* config)
         if (ret != WOLFSSL_SUCCESS)
                 return KRITIS3M_PKI_PKCS11_ERROR;
 
-
         return KRITIS3M_PKI_SUCCESS;
 }
-
 
 #ifdef HAVE_PKCS11
 
 /* Internal helper method */
-int initPkcs11Token(Pkcs11Dev* device, Pkcs11Token* token, char const* path, int slot_id,
-                    uint8_t const* pin, size_t pin_size, int device_id)
+int initPkcs11Token(Pkcs11Dev* device,
+                    Pkcs11Token* token,
+                    char const* path,
+                    int slot_id,
+                    uint8_t const* pin,
+                    size_t pin_size,
+                    int device_id)
 {
         int ret = 0;
 
@@ -120,7 +121,6 @@ cleanup:
 
 #endif
 
-
 /* Create a new PrivateKey object */
 PrivateKey* privateKey_new(void)
 {
@@ -138,7 +138,6 @@ PrivateKey* privateKey_new(void)
 
         return key;
 }
-
 
 /* Reference an external PrivateKey for secure element interaction. The `label` is copied
  * into the object.
@@ -158,7 +157,8 @@ int privateKey_setExternalRef(PrivateKey* key, int deviceId, char const* label)
                 /* Free previous if present */
                 if (key->primaryKey.external.label != NULL)
                 {
-                        pki_log(KRITIS3M_PKI_LOG_LEVEL_WRN, "Overwriting existing primary key reference");
+                        pki_log(KRITIS3M_PKI_LOG_LEVEL_WRN,
+                                "Overwriting existing primary key reference");
                         free(key->primaryKey.external.label);
                 }
 
@@ -177,7 +177,6 @@ int privateKey_setExternalRef(PrivateKey* key, int deviceId, char const* label)
         return privateKey_setAltExternalRef(key, deviceId, label);
 }
 
-
 /* Reference an external alternative PrivateKey for secure element interaction. The `label`
  * is copied into the object.
  * Must be called *before* generating a new key or loading the key from an existing buffer.
@@ -194,7 +193,8 @@ int privateKey_setAltExternalRef(PrivateKey* key, int deviceId, char const* labe
                 /* Free previous if present */
                 if (key->alternativeKey.external.label != NULL)
                 {
-                        pki_log(KRITIS3M_PKI_LOG_LEVEL_WRN, "Overwriting existing alternative key reference");
+                        pki_log(KRITIS3M_PKI_LOG_LEVEL_WRN,
+                                "Overwriting existing alternative key reference");
                         free(key->alternativeKey.external.label);
                 }
 
@@ -213,7 +213,6 @@ int privateKey_setAltExternalRef(PrivateKey* key, int deviceId, char const* labe
         return KRITIS3M_PKI_SUCCESS;
 }
 
-
 /* Internal helper method to initialize a private key object */
 int initPrivateKey(SinglePrivateKey* key, int type)
 {
@@ -225,8 +224,10 @@ int initPrivateKey(SinglePrivateKey* key, int type)
         if (type == RSAk)
         {
                 if (key->external.label != NULL)
-                        ret = wc_InitRsaKey_Label(&key->key.rsa, key->external.label,
-                                                  NULL, key->external.deviceId);
+                        ret = wc_InitRsaKey_Label(&key->key.rsa,
+                                                  key->external.label,
+                                                  NULL,
+                                                  key->external.deviceId);
                 else
                         ret = wc_InitRsaKey(&key->key.rsa, NULL);
 
@@ -239,8 +240,10 @@ int initPrivateKey(SinglePrivateKey* key, int type)
         else if (type == ECDSAk)
         {
                 if (key->external.label != NULL)
-                        ret = wc_ecc_init_label(&key->key.ecc, key->external.label,
-                                                NULL, key->external.deviceId);
+                        ret = wc_ecc_init_label(&key->key.ecc,
+                                                key->external.label,
+                                                NULL,
+                                                key->external.deviceId);
                 else
                         ret = wc_ecc_init(&key->key.ecc);
 
@@ -252,16 +255,17 @@ int initPrivateKey(SinglePrivateKey* key, int type)
                 wc_ecc_set_flags(&key->key.ecc, WC_ECC_FLAG_DEC_SIGN);
         }
         else if (
-        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
-                 (type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
-                 (type == DILITHIUM_LEVEL5k) ||
-        #endif
-                 (type == ML_DSA_LEVEL2k) || (type == ML_DSA_LEVEL3k) ||
-                 (type == ML_DSA_LEVEL5k))
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                (type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
+                (type == DILITHIUM_LEVEL5k) ||
+#endif
+                (type == ML_DSA_LEVEL2k) || (type == ML_DSA_LEVEL3k) || (type == ML_DSA_LEVEL5k))
         {
                 if (key->external.label != NULL)
-                        ret = wc_dilithium_init_label(&key->key.dilithium, key->external.label,
-                                                      NULL, key->external.deviceId);
+                        ret = wc_dilithium_init_label(&key->key.dilithium,
+                                                      key->external.label,
+                                                      NULL,
+                                                      key->external.deviceId);
                 else
                         ret = wc_dilithium_init(&key->key.dilithium);
 
@@ -282,7 +286,7 @@ int initPrivateKey(SinglePrivateKey* key, int type)
                         key->certKeyType = DILITHIUM_LEVEL5_TYPE;
                         ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_87);
                         break;
-        #if defined(WOLFSSL_DILITHIUM_FIPS204_DRAFT)
+#if defined(WOLFSSL_DILITHIUM_FIPS204_DRAFT)
                 case DILITHIUM_LEVEL2k:
                         key->certKeyType = DILITHIUM_LEVEL2_TYPE;
                         ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_44_DRAFT);
@@ -295,7 +299,7 @@ int initPrivateKey(SinglePrivateKey* key, int type)
                         key->certKeyType = DILITHIUM_LEVEL5_TYPE;
                         ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_87_DRAFT);
                         break;
-        #endif
+#endif
                 default:
                         ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported Dilithium key level");
                 }
@@ -308,13 +312,15 @@ int initPrivateKey(SinglePrivateKey* key, int type)
         else if ((type == FALCON_LEVEL1k) || (type == FALCON_LEVEL5k))
         {
                 if (key->external.label != NULL)
-                        ret = wc_falcon_init_label(&key->key.falcon, key->external.label,
-                                                   NULL, key->external.deviceId);
+                        ret = wc_falcon_init_label(&key->key.falcon,
+                                                   key->external.label,
+                                                   NULL,
+                                                   key->external.deviceId);
                 else
                         ret = wc_falcon_init(&key->key.falcon);
 
                 if (ret != 0)
-                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Falcon key initialization failed: %d", ret);
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Falcon key initialization failed: %d", ret);
 
                 switch (type)
                 {
@@ -368,7 +374,6 @@ cleanup:
         return ret;
 }
 
-
 /* Internal helper method to import a public key into an existing key object with a private key.
  * This also checks that the private and public key belong together. */
 int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeySize, int type)
@@ -387,21 +392,25 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
         }
         else if (type == ECDSAk)
         {
-                /* For internal  ECC keys, we cannot simply import the public key data into the existing key object,
-                 * as internal data is incorrectly overwritten. Instead, we have to export the private key from the
-                 * existing key and then create a new key object with both the private and public key data. */
+                /* For internal  ECC keys, we cannot simply import the public key data into the
+                 * existing key object, as internal data is incorrectly overwritten. Instead, we
+                 * have to export the private key from the existing key and then create a new key
+                 * object with both the private and public key data. */
                 if (key->external.label == NULL)
                 {
                         /* Allocate temporary buffers */
                         privKeyBuffer = (uint8_t*) malloc(TEMP_SZ);
                         word32 privKeySize = TEMP_SZ;
                         if (privKeyBuffer == NULL)
-                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Memory allocation for ECC private key failed");
+                                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR,
+                                          "Memory allocation for ECC private key failed");
 
                         /* Export private key */
                         ret = wc_ecc_export_private_only(&key->key.ecc, privKeyBuffer, &privKeySize);
                         if (ret != 0)
-                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "ECC private key export failed: %d", ret);
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR,
+                                          "ECC private key export failed: %d",
+                                          ret);
 
                         /* Delete old key object and create a new one */
                         freeSinglePrivateKey(key);
@@ -410,7 +419,11 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
                                 ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "ECC key initialization failed");
 
                         /* Import both the public and private key */
-                        ret = wc_ecc_import_private_key(privKeyBuffer, privKeySize, pubKey, pubKeySize, &key->key.ecc);
+                        ret = wc_ecc_import_private_key(privKeyBuffer,
+                                                        privKeySize,
+                                                        pubKey,
+                                                        pubKeySize,
+                                                        &key->key.ecc);
                 }
                 else
                 {
@@ -418,32 +431,27 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
                 }
         }
         else if (
-        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
-                 (type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
-                 (type == DILITHIUM_LEVEL5k) ||
-        #endif
-                 (type == ML_DSA_LEVEL2k) || (type == ML_DSA_LEVEL3k) ||
-                 (type == ML_DSA_LEVEL5k))
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                (type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
+                (type == DILITHIUM_LEVEL5k) ||
+#endif
+                (type == ML_DSA_LEVEL2k) || (type == ML_DSA_LEVEL3k) || (type == ML_DSA_LEVEL5k))
         {
-                ret = wc_Dilithium_PublicKeyDecode(pubKey, &idx, &key->key.dilithium,
-                                                        pubKeySize);
+                ret = wc_Dilithium_PublicKeyDecode(pubKey, &idx, &key->key.dilithium, pubKeySize);
         }
-        #ifdef HAVE_FALCON
+#ifdef HAVE_FALCON
         else if ((type == FALCON_LEVEL1k) || (type == FALCON_LEVEL5k))
         {
-                ret = wc_Falcon_PublicKeyDecode(pubKey, &idx, &key->key.falcon,
-                                                pubKeySize);
+                ret = wc_Falcon_PublicKeyDecode(pubKey, &idx, &key->key.falcon, pubKeySize);
         }
-        #endif
+#endif
         else if (type == ED25519k)
         {
-                ret = wc_Ed25519PublicKeyDecode(pubKey, &idx, &key->key.ed25519,
-                                                        pubKeySize);
+                ret = wc_Ed25519PublicKeyDecode(pubKey, &idx, &key->key.ed25519, pubKeySize);
         }
         else if (type == ED448k)
         {
-                ret = wc_Ed448PublicKeyDecode(pubKey, &idx, &key->key.ed448,
-                                                        pubKeySize);
+                ret = wc_Ed448PublicKeyDecode(pubKey, &idx, &key->key.ed448, pubKeySize);
         }
         else
                 ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported key type: %d", type);
@@ -457,53 +465,52 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
                 // if (key->external.label != NULL)
                 //         ret = wc_CryptoCb_RsaCheckPrivKey(&key->key.rsa, pubKey, pubKeySize);
                 // else
-                        ret = wc_CheckRsaKey(&key->key.rsa);
+                ret = wc_CheckRsaKey(&key->key.rsa);
         }
         else if (type == ECDSAk)
         {
                 // if (key->external.label != NULL)
                 //         ret = wc_CryptoCb_EccCheckPrivKey(&key->key.ecc, pubKey, pubKeySize);
                 // else
-                        ret = wc_ecc_check_key(&key->key.ecc);
+                ret = wc_ecc_check_key(&key->key.ecc);
         }
         else if (
-        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
-                 (type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
-                 (type == DILITHIUM_LEVEL5k) ||
-        #endif
-                 (type == ML_DSA_LEVEL2k) || (type == ML_DSA_LEVEL3k) ||
-                 (type == ML_DSA_LEVEL5k))
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                (type == DILITHIUM_LEVEL2k) || (type == DILITHIUM_LEVEL3k) ||
+                (type == DILITHIUM_LEVEL5k) ||
+#endif
+                (type == ML_DSA_LEVEL2k) || (type == ML_DSA_LEVEL3k) || (type == ML_DSA_LEVEL5k))
         {
                 // if (key->external.label != NULL)
                 //         ret = wc_CryptoCb_PqcSignatureCheckPrivKey(&key->key.dilithium,
                 //                         WC_PQC_SIG_TYPE_DILITHIUM, pubKey, pubKeySize);
                 // else
-                        ret = wc_dilithium_check_key(&key->key.dilithium);
+                ret = wc_dilithium_check_key(&key->key.dilithium);
         }
-        #ifdef HAVE_FALCON
+#ifdef HAVE_FALCON
         else if ((type == FALCON_LEVEL1k) || (type == FALCON_LEVEL5k))
         {
                 // if (key->external.label != NULL)
                 //         ret = wc_CryptoCb_PqcSignatureCheckPrivKey(&key->key.falcon,
                 //                         WC_PQC_SIG_TYPE_FALCON, pubKey, pubKeySize);
                 // else
-                        /* Not supported currently... */
-                        // ret = wc_falcon_check_key(&key->key.falcon);
+                /* Not supported currently... */
+                // ret = wc_falcon_check_key(&key->key.falcon);
         }
-        #endif
+#endif
         else if (type == ED25519k)
         {
                 // if (key->external.label != NULL)
-                        /* Not supported currently... */
+                /* Not supported currently... */
                 // else
-                        ret = wc_ed25519_check_key(&key->key.ed25519);
+                ret = wc_ed25519_check_key(&key->key.ed25519);
         }
         else if (type == ED448k)
         {
                 // if (key->external.label != NULL)
-                        /* Not supported currently... */
+                /* Not supported currently... */
                 // else
-                        ret = wc_ed448_check_key(&key->key.ed448);
+                ret = wc_ed448_check_key(&key->key.ed448);
         }
 
         if (ret != 0)
@@ -515,7 +522,6 @@ cleanup:
 
         return ret;
 }
-
 
 static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
 {
@@ -672,9 +678,11 @@ static int tryDecodeUnknownKey(SinglePrivateKey* key, DerBuffer const* der)
         return KRITIS3M_PKI_KEY_UNSUPPORTED;
 }
 
-
 /* Internal helper method for parsing a PEM buffer */
-static int parsePemBuffer(uint8_t const* buffer, size_t buffer_size, SinglePrivateKey* key, EncryptedInfo* info)
+static int parsePemBuffer(uint8_t const* buffer,
+                          size_t buffer_size,
+                          SinglePrivateKey* key,
+                          EncryptedInfo* info)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
         word32 index = 0;
@@ -707,39 +715,45 @@ static int parsePemBuffer(uint8_t const* buffer, size_t buffer_size, SinglePriva
                 else if (key->type == ECDSAk)
                         ret = wc_EccPrivateKeyDecode(der->buffer, &index, &key->key.ecc, der->length);
                 else if (
-                #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
-                         (key->type == DILITHIUM_LEVEL2k) || (key->type == DILITHIUM_LEVEL3k) ||
-                         (key->type == DILITHIUM_LEVEL5k) ||
-                #endif
-                         (key->type == ML_DSA_LEVEL2k) || (key->type == ML_DSA_LEVEL3k) ||
-                         (key->type == ML_DSA_LEVEL5k))
-                        ret = wc_Dilithium_PrivateKeyDecode(der->buffer, &index,
-                                        &key->key.dilithium, der->length);
-        #ifdef HAVE_FALCON
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                        (key->type == DILITHIUM_LEVEL2k) || (key->type == DILITHIUM_LEVEL3k) ||
+                        (key->type == DILITHIUM_LEVEL5k) ||
+#endif
+                        (key->type == ML_DSA_LEVEL2k) || (key->type == ML_DSA_LEVEL3k) ||
+                        (key->type == ML_DSA_LEVEL5k))
+                        ret = wc_Dilithium_PrivateKeyDecode(der->buffer,
+                                                            &index,
+                                                            &key->key.dilithium,
+                                                            der->length);
+#ifdef HAVE_FALCON
                 else if ((key->type == FALCON_LEVEL1k) || (key->type == FALCON_LEVEL5k))
-                        ret = wc_Falcon_PrivateKeyDecode(der->buffer, &index,
-                                        &key->key.falcon, der->length);
-        #endif
+                        ret = wc_Falcon_PrivateKeyDecode(der->buffer, &index, &key->key.falcon, der->length);
+#endif
                 else if (key->type == ED25519k)
                 {
-                        ret = wc_Ed25519PrivateKeyDecode(der->buffer, &index,
-                                        &key->key.ed25519, der->length);
+                        ret = wc_Ed25519PrivateKeyDecode(der->buffer,
+                                                         &index,
+                                                         &key->key.ed25519,
+                                                         der->length);
 
                         if (ret == 0 && key->key.ed25519.pubKeySet == 0)
                         {
-                                ret = wc_ed25519_make_public(&key->key.ed25519, key->key.ed25519.p, sizeof(key->key.ed25519.p));
+                                ret = wc_ed25519_make_public(&key->key.ed25519,
+                                                             key->key.ed25519.p,
+                                                             sizeof(key->key.ed25519.p));
                                 if (ret == 0)
                                         ret = wc_ed25519_check_key(&key->key.ed25519);
                         }
                 }
                 else if (key->type == ED448k)
                 {
-                        ret = wc_Ed448PrivateKeyDecode(der->buffer, &index,
-                                        &key->key.ed448, der->length);
+                        ret = wc_Ed448PrivateKeyDecode(der->buffer, &index, &key->key.ed448, der->length);
 
                         if (ret == 0 && key->key.ed448.pubKeySet == 0)
                         {
-                                ret = wc_ed448_make_public(&key->key.ed448, key->key.ed448.p, sizeof(key->key.ed448.p));
+                                ret = wc_ed448_make_public(&key->key.ed448,
+                                                           key->key.ed448.p,
+                                                           sizeof(key->key.ed448.p));
                                 if (ret == 0)
                                         ret = wc_ed448_check_key(&key->key.ed448);
                         }
@@ -786,12 +800,14 @@ int privateKey_loadKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size_t 
         /* Parse alternative key if present in the PEM data */
         if (info.consumed < buffer_size)
         {
-                ret = parsePemBuffer(buffer + info.consumed, buffer_size - info.consumed, &key->alternativeKey, &info);
+                ret = parsePemBuffer(buffer + info.consumed,
+                                     buffer_size - info.consumed,
+                                     &key->alternativeKey,
+                                     &info);
         }
 
         return ret;
 }
-
 
 /* Load an alternative private key from the PEM encoded data in the provided `buffer` with
  * `buffer_size` bytes and store it decoded in the `key` PrivateKey object.
@@ -813,7 +829,6 @@ int privateKey_loadAltKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size
 
         return ret;
 }
-
 
 /* Internal helper method to generate a single key pair for given algorithm. */
 int generateKey(SinglePrivateKey* key, char const* algorithm)
@@ -875,7 +890,9 @@ int generateKey(SinglePrivateKey* key, char const* algorithm)
                 else if (strcmp(algorithm, "mldsa87") == 0)
                         ret = initPrivateKey(key, ML_DSA_LEVEL5k);
                 else
-                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported ML-DSA key level: %s", algorithm);
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED,
+                                  "Unsupported ML-DSA key level: %s",
+                                  algorithm);
 
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "ML-DSA key initialization failed");
@@ -894,7 +911,9 @@ int generateKey(SinglePrivateKey* key, char const* algorithm)
                 else if (strcmp(algorithm, "dilithium5") == 0)
                         ret = initPrivateKey(key, DILITHIUM_LEVEL5k);
                 else
-                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported Dilithium key level: %s", algorithm);
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED,
+                                  "Unsupported Dilithium key level: %s",
+                                  algorithm);
 
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Dilithium key initialization failed");
@@ -939,7 +958,6 @@ cleanup:
         return ret;
 }
 
-
 /* Generate a new public/private key pair for given `algorithm` and store the result in
  * the `key` object.
  *
@@ -958,7 +976,6 @@ int privateKey_generateKey(PrivateKey* key, char const* algorithm)
         return ret;
 }
 
-
 /* Generate a new public/private key pair for given `algorithm` and store the result in
  * the `key` object as the alternative key.
  *
@@ -976,7 +993,6 @@ int privateKey_generateAltKey(PrivateKey* key, char const* algorithm)
 
         return ret;
 }
-
 
 /* Internal helper method to export a single private key */
 int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size)
@@ -1029,22 +1045,19 @@ int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size
                 ret = wc_EccKeyToPKCS8(&key->key.ecc, derBuffer, &derSize);
         }
         else if (
-        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
-                 (key->type == DILITHIUM_LEVEL2k) ||
-                 (key->type == DILITHIUM_LEVEL3k) ||
-                 (key->type == DILITHIUM_LEVEL5k) ||
-        #endif
-                 (key->type == ML_DSA_LEVEL2k) ||
-                 (key->type == ML_DSA_LEVEL3k) ||
-                 (key->type == ML_DSA_LEVEL5k))
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                (key->type == DILITHIUM_LEVEL2k) || (key->type == DILITHIUM_LEVEL3k) ||
+                (key->type == DILITHIUM_LEVEL5k) ||
+#endif
+                (key->type == ML_DSA_LEVEL2k) || (key->type == ML_DSA_LEVEL3k) ||
+                (key->type == ML_DSA_LEVEL5k))
         {
                 /* Encode the key and store it in DER encoding */
                 // ret = wc_Dilithium_KeyToDer(&key->key.dilithium, derBuffer, derSize);
                 ret = wc_Dilithium_PrivateKeyToDer(&key->key.dilithium, derBuffer, derSize);
         }
 #ifdef HAVE_FALCON
-        else if ((key->type == FALCON_LEVEL1k) ||
-                 (key->type == FALCON_LEVEL5k))
+        else if ((key->type == FALCON_LEVEL1k) || (key->type == FALCON_LEVEL5k))
         {
                 /* Encode the key and store it in DER encoding */
                 // ret = wc_Falcon_KeyToDer(&key->key.falcon, derBuffer, derSize);
@@ -1087,7 +1100,6 @@ cleanup:
         return ret;
 }
 
-
 /* Convert the primary key in `key` to PEM and write the result into `buffer`. On function
  * entry, `buffer_size` must contain the size of the provided output buffer. After successful
  * completion, `buffer_size` will contain the size of the written output in the buffer.
@@ -1106,7 +1118,6 @@ int privateKey_writeKeyToBuffer(PrivateKey* key, uint8_t* buffer, size_t* buffer
 
         return ret;
 }
-
 
 /* Convert the alternative key in `key` to PEM and write the result into `buffer`. On function
  * entry, `buffer_size` must contain the size of the provided output buffer. After successful
@@ -1127,7 +1138,6 @@ int privateKey_writeAltKeyToBuffer(PrivateKey* key, uint8_t* buffer, size_t* buf
         return ret;
 }
 
-
 /* Internal helper method to copy a single private key */
 int copySinglePrivateKey(SinglePrivateKey* destination, SinglePrivateKey* source)
 {
@@ -1141,13 +1151,13 @@ int copySinglePrivateKey(SinglePrivateKey* destination, SinglePrivateKey* source
         if (source->init == false)
                 return KRITIS3M_PKI_SUCCESS;
 
-
         /* Copy external referenced key data */
         if (source->external.label != NULL)
         {
                 destination->external.label = (char*) malloc(strlen(source->external.label) + 1);
                 if (destination->external.label == NULL)
-                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Memory allocation for external label failed");
+                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR,
+                                  "Memory allocation for external label failed");
 
                 strcpy(destination->external.label, source->external.label);
                 destination->external.deviceId = source->external.deviceId;
@@ -1179,7 +1189,6 @@ int copySinglePrivateKey(SinglePrivateKey* destination, SinglePrivateKey* source
                 if (ret != 0)
                         ERROR_OUT(ret, "Key export failed");
 
-
                 /* Decode PEM data into destination key */
                 ret = parsePemBuffer(pemBuffer, pemSize, destination, NULL);
                 if (ret != 0)
@@ -1197,7 +1206,6 @@ cleanup:
 
         return ret;
 }
-
 
 /* Copy a Privatekey object to another one.
  *
@@ -1221,7 +1229,6 @@ int privateKey_copyKey(PrivateKey* destination, PrivateKey* source)
         return ret;
 }
 
-
 /* Internal helper method */
 int getSigAlgForKey(SinglePrivateKey* key)
 {
@@ -1236,23 +1243,23 @@ int getSigAlgForKey(SinglePrivateKey* key)
                 sigAlg = CTC_SHA256wRSA; /* ToDo */
                 break;
         case ECDSAk:
-        {
-                switch (key->key.ecc.dp->size)
                 {
-                case 32:
-                        sigAlg = CTC_SHA256wECDSA;
+                        switch (key->key.ecc.dp->size)
+                        {
+                        case 32:
+                                sigAlg = CTC_SHA256wECDSA;
+                                break;
+                        case 48:
+                                sigAlg = CTC_SHA384wECDSA;
+                                break;
+                        case 66:
+                                sigAlg = CTC_SHA512wECDSA;
+                                break;
+                        default:
+                                sigAlg = KRITIS3M_PKI_KEY_UNSUPPORTED;
+                        }
                         break;
-                case 48:
-                        sigAlg = CTC_SHA384wECDSA;
-                        break;
-                case 66:
-                        sigAlg = CTC_SHA512wECDSA;
-                        break;
-                default:
-                        sigAlg = KRITIS3M_PKI_KEY_UNSUPPORTED;
                 }
-                break;
-        }
         case ML_DSA_LEVEL2k:
                 sigAlg = CTC_ML_DSA_LEVEL2;
                 break;
@@ -1295,7 +1302,6 @@ int getSigAlgForKey(SinglePrivateKey* key)
         return sigAlg;
 }
 
-
 void freeSinglePrivateKey(SinglePrivateKey* key)
 {
         if (key != NULL && key->init)
@@ -1313,19 +1319,19 @@ void freeSinglePrivateKey(SinglePrivateKey* key)
                         case ML_DSA_LEVEL2k:
                         case ML_DSA_LEVEL3k:
                         case ML_DSA_LEVEL5k:
-                #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
                         case DILITHIUM_LEVEL2k:
                         case DILITHIUM_LEVEL3k:
                         case DILITHIUM_LEVEL5k:
-                #endif
+#endif
                                 wc_dilithium_free(&key->key.dilithium);
                                 break;
-                #ifdef HAVE_FALCON
+#ifdef HAVE_FALCON
                         case FALCON_LEVEL1k:
                         case FALCON_LEVEL5k:
                                 wc_falcon_free(&key->key.falcon);
                                 break;
-                #endif
+#endif
                         case ED25519k:
                                 wc_ed25519_free(&key->key.ed25519);
                                 break;
@@ -1354,4 +1360,3 @@ void privateKey_free(PrivateKey* key)
                 free(key);
         }
 }
-

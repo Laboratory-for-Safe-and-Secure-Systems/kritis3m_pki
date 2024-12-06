@@ -1,48 +1,44 @@
 #ifndef KRITIS3M_PKI_COMMON_H
 #define KRITIS3M_PKI_COMMON_H
 
-
-#include <stdlib.h>
-#include <stdint.h>
 #include <stdbool.h>
-
+#include <stdint.h>
+#include <stdlib.h>
 
 /* Properly set the API visibility */
 #if defined(BUILDING_KRITIS3M_PKI)
-    #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
-        #if defined(BUILDING_KRITIS3M_PKI_SHARED)
-            #define KRITIS3M_PKI_API __declspec(dllexport)
+        #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
+                #if defined(BUILDING_KRITIS3M_PKI_SHARED)
+                        #define KRITIS3M_PKI_API __declspec(dllexport)
+                #else
+                        #define KRITIS3M_PKI_API
+                #endif
         #else
-            #define KRITIS3M_PKI_API
+                #define KRITIS3M_PKI_API
         #endif
-    #else
-        #define KRITIS3M_PKI_API
-    #endif
 #else /* BUILDING_KRITIS3M_PKI */
-    #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
-        #if defined(BUILDING_KRITIS3M_PKI_SHARED)
-            #define KRITIS3M_PKI_API __declspec(dllimport)
+        #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
+                #if defined(BUILDING_KRITIS3M_PKI_SHARED)
+                        #define KRITIS3M_PKI_API __declspec(dllimport)
+                #else
+                        #define KRITIS3M_PKI_API
+                #endif
         #else
-            #define KRITIS3M_PKI_API
+                #define KRITIS3M_PKI_API
         #endif
-    #else
-        #define KRITIS3M_PKI_API
-    #endif
 #endif /* BUILDING_KRITIS3M_PKI */
-
 
 #define PKCS11_LABEL_IDENTIFIER "pkcs11:"
 #define PKCS11_LABEL_IDENTIFIER_LEN 7
-
 
 /* Forward declarations of our data types.
  * The actual declarations are in the source file to hide
  * the internal dependencies. */
 typedef struct privateKey PrivateKey;
 
-
 /* Error Codes */
-enum KRITIS3M_PKI_ERROR_CODES {
+enum KRITIS3M_PKI_ERROR_CODES
+{
         KRITIS3M_PKI_SUCCESS = 0,
         KRITIS3M_PKI_MEMORY_ERROR = -1,
         KRITIS3M_PKI_ARGUMENT_ERROR = -2,
@@ -59,20 +55,17 @@ enum KRITIS3M_PKI_ERROR_CODES {
         KRITIS3M_PKI_PKCS11_ERROR = -13,
 };
 
-
 /* Available Log levels. Default is ERR. */
 enum KRITIS3M_PKI_LOG_LEVEL
 {
-    KRITIS3M_PKI_LOG_LEVEL_ERR   = 1U,
-    KRITIS3M_PKI_LOG_LEVEL_WRN   = 2U,
-    KRITIS3M_PKI_LOG_LEVEL_INF   = 3U,
-    KRITIS3M_PKI_LOG_LEVEL_DBG   = 4U,
+        KRITIS3M_PKI_LOG_LEVEL_ERR = 1U,
+        KRITIS3M_PKI_LOG_LEVEL_WRN = 2U,
+        KRITIS3M_PKI_LOG_LEVEL_INF = 3U,
+        KRITIS3M_PKI_LOG_LEVEL_DBG = 4U,
 };
-
 
 /* Function pointer type for logging callbacks. */
 typedef void (*kritis3m_pki_log_callback)(int32_t level, char const* message);
-
 
 /* Data structure for the library configuration */
 typedef struct
@@ -80,9 +73,7 @@ typedef struct
         bool logging_enabled;
         int32_t log_level;
         kritis3m_pki_log_callback log_callback;
-}
-kritis3m_pki_configuration;
-
+} kritis3m_pki_configuration;
 
 /* Initialize the KRITIS3M PKI libraries.
  *
@@ -93,7 +84,6 @@ kritis3m_pki_configuration;
  */
 KRITIS3M_PKI_API int kritis3m_pki_init(kritis3m_pki_configuration const* config);
 
-
 /* Enable/disable logging infrastructure.
  *
  * Parameter is a boolean value to enable or disable logging.
@@ -101,7 +91,6 @@ KRITIS3M_PKI_API int kritis3m_pki_init(kritis3m_pki_configuration const* config)
  * Returns KRITIS3M_PKI_SUCCESS on success, negative error code in case of an error.
  */
 KRITIS3M_PKI_API int kritis3m_pki_enable_logging(bool enable);
-
 
 /* Set a custom logging callback.
  *
@@ -111,7 +100,6 @@ KRITIS3M_PKI_API int kritis3m_pki_enable_logging(bool enable);
  */
 KRITIS3M_PKI_API int kritis3m_pki_set_log_callback(kritis3m_pki_log_callback new_callback);
 
-
 /* Update the log level.
  *
  * Parameter is the new log level.
@@ -120,14 +108,11 @@ KRITIS3M_PKI_API int kritis3m_pki_set_log_callback(kritis3m_pki_log_callback new
  */
 KRITIS3M_PKI_API int kritis3m_pki_set_log_level(int32_t new_log_level);
 
-
 /* Print a human-readable error message for the provided error code. */
 KRITIS3M_PKI_API char const* kritis3m_pki_error_message(int error_code);
 
-
 /* Create a new PrivateKey object */
 KRITIS3M_PKI_API PrivateKey* privateKey_new(void);
-
 
 /* Reference an external PrivateKey for secure element interaction. The `label` is copied
  * into the object.
@@ -139,7 +124,6 @@ KRITIS3M_PKI_API PrivateKey* privateKey_new(void);
  */
 KRITIS3M_PKI_API int privateKey_setExternalRef(PrivateKey* key, int deviceId, char const* label);
 
-
 /* Reference an external alternative PrivateKey for secure element interaction. The `label`
  * is copied into the object.
  * Must be called *before* generating a new key or loading the key from an existing buffer.
@@ -147,7 +131,6 @@ KRITIS3M_PKI_API int privateKey_setExternalRef(PrivateKey* key, int deviceId, ch
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
 KRITIS3M_PKI_API int privateKey_setAltExternalRef(PrivateKey* key, int deviceId, char const* label);
-
 
 /* Initialize the given PrivateKey `key` using the PEM encoded data in the provided `buffer`
  * with `buffer_size` bytes. The key type is determined automatically. When the PEM file
@@ -157,18 +140,16 @@ KRITIS3M_PKI_API int privateKey_setAltExternalRef(PrivateKey* key, int deviceId,
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-KRITIS3M_PKI_API int privateKey_loadKeyFromBuffer(PrivateKey* key, uint8_t const* buffer,
-                                                  size_t buffer_size);
-
+KRITIS3M_PKI_API int
+        privateKey_loadKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size_t buffer_size);
 
 /* Load an alternative private key from the PEM encoded data in the provided `buffer` with
  * `buffer_size` bytes and store it decoded in the `key` PrivateKey object.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-KRITIS3M_PKI_API int privateKey_loadAltKeyFromBuffer(PrivateKey* key, uint8_t const* buffer,
-                                                     size_t buffer_size);
-
+KRITIS3M_PKI_API int
+        privateKey_loadAltKeyFromBuffer(PrivateKey* key, uint8_t const* buffer, size_t buffer_size);
 
 /* Generate a new public/private key pair for given `algorithm` and store the result in
  * the `key` object.
@@ -177,7 +158,6 @@ KRITIS3M_PKI_API int privateKey_loadAltKeyFromBuffer(PrivateKey* key, uint8_t co
  */
 KRITIS3M_PKI_API int privateKey_generateKey(PrivateKey* key, char const* algorithm);
 
-
 /* Generate a new public/private key pair for given `algorithm` and store the result in
  * the `key` object as the alternative key.
  *
@@ -185,13 +165,11 @@ KRITIS3M_PKI_API int privateKey_generateKey(PrivateKey* key, char const* algorit
  */
 KRITIS3M_PKI_API int privateKey_generateAltKey(PrivateKey* key, char const* algorithm);
 
-
 /* Copy a Privatekey object to another one.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
 KRITIS3M_PKI_API int privateKey_copyKey(PrivateKey* destination, PrivateKey* source);
-
 
 /* Convert the primary key in `key` to PEM and write the result into `buffer`. On function
  * entry, `buffer_size` must contain the size of the provided output buffer. After successful
@@ -199,9 +177,7 @@ KRITIS3M_PKI_API int privateKey_copyKey(PrivateKey* destination, PrivateKey* sou
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-KRITIS3M_PKI_API int privateKey_writeKeyToBuffer(PrivateKey* key, uint8_t* buffer,
-                                                 size_t* buffer_size);
-
+KRITIS3M_PKI_API int privateKey_writeKeyToBuffer(PrivateKey* key, uint8_t* buffer, size_t* buffer_size);
 
 /* Convert the alternative key in `key` to PEM and write the result into `buffer`. On function
  * entry, `buffer_size` must contain the size of the provided output buffer. After successful
@@ -209,12 +185,9 @@ KRITIS3M_PKI_API int privateKey_writeKeyToBuffer(PrivateKey* key, uint8_t* buffe
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-KRITIS3M_PKI_API int privateKey_writeAltKeyToBuffer(PrivateKey* key, uint8_t* buffer,
-                                                    size_t* buffer_size);
-
+KRITIS3M_PKI_API int privateKey_writeAltKeyToBuffer(PrivateKey* key, uint8_t* buffer, size_t* buffer_size);
 
 /* Free the memory of given PrivateKey */
 KRITIS3M_PKI_API void privateKey_free(PrivateKey* key);
-
 
 #endif /* KRITIS3M_PKI_COMMON_H */

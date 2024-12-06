@@ -1,21 +1,17 @@
 #ifndef KRITIS3M_PKI_CLI_PARSING_H
 #define KRITIS3M_PKI_CLI_PARSING_H
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
-#include "kritis3m_pki_common.h"
 #include "kritis3m_pki_client.h"
-
-
+#include "kritis3m_pki_common.h"
 
 typedef struct
 {
         int32_t log_level;
-}
-application_config;
-
+} application_config;
 
 typedef struct
 {
@@ -34,9 +30,7 @@ typedef struct
 
         char const* certOutputFilePath;
         char const* csrOutputFilePath;
-}
-pki_paths;
-
+} pki_paths;
 
 typedef struct
 {
@@ -44,9 +38,7 @@ typedef struct
         char const* altKeyGenAlg;
 
         bool selfSignCert;
-}
-pki_generation_info;
-
+} pki_generation_info;
 
 typedef struct
 {
@@ -55,9 +47,7 @@ typedef struct
         SigningRequestMetadata certMetadata;
 
         int validity;
-}
-pki_metadata;
-
+} pki_metadata;
 
 typedef struct
 {
@@ -69,8 +59,7 @@ typedef struct
                 int pinLen;
 
                 int deviceId;
-        }
-        issuerModule;
+        } issuerModule;
 
         struct
         {
@@ -80,19 +69,19 @@ typedef struct
                 int pinLen;
 
                 int deviceId;
-        }
-        entityModule;
-}
-pki_pkcs11;
-
+        } entityModule;
+} pki_pkcs11;
 
 /* Parse the provided argv array and store the information in the provided config variables.
  *
  * Returns 0 on success, +1 in case the help was printed and -1 on failure (error is printed on console).
  */
-int parse_cli_arguments(application_config* app_config, pki_paths* paths, pki_generation_info* generation_info,
-                        pki_metadata* metadata, pki_pkcs11* pkcs11, size_t argc, char** argv);
-
-
+int parse_cli_arguments(application_config* app_config,
+                        pki_paths* paths,
+                        pki_generation_info* generation_info,
+                        pki_metadata* metadata,
+                        pki_pkcs11* pkcs11,
+                        size_t argc,
+                        char** argv);
 
 #endif /* KRITIS3M_PKI_CLI_PARSING_H */

@@ -1,7 +1,6 @@
 #include "kritis3m_pki_server.h"
 #include "kritis3m_pki_priv.h"
 
-
 #ifdef HAVE_PKCS11
 
 /* File global variable for the PKCS#11 token containing the issuer key */
@@ -11,7 +10,6 @@ static bool issuerTokenInitialized = false;
 
 #endif
 
-
 /* Initialize the PKCS#11 token for the issuer key. Use the library from `path` and
  * the token found at `slot_id`. If `-1` is supplied as `slot_id`, the first found
  * token is used automatically. The `pin` for the token is optional (supply `NULL`
@@ -20,13 +18,17 @@ static bool issuerTokenInitialized = false;
  * Return value is the `device_id` for the initialized token in case of success
  * (positive integer > 0), negative error code otherwise.
  */
-int kritis3m_pki_init_issuer_token(char const* path, int slot_id, uint8_t const* pin,
-                                   size_t pin_size)
+int kritis3m_pki_init_issuer_token(char const* path, int slot_id, uint8_t const* pin, size_t pin_size)
 {
 #ifdef HAVE_PKCS11
         /* Initialize the token */
-        int ret = initPkcs11Token(&issuerDevice, &issuerToken, path, slot_id,
-                                  pin, pin_size, PKCS11_ISSUER_TOKEN_DEVICE_ID);
+        int ret = initPkcs11Token(&issuerDevice,
+                                  &issuerToken,
+                                  path,
+                                  slot_id,
+                                  pin,
+                                  pin_size,
+                                  PKCS11_ISSUER_TOKEN_DEVICE_ID);
         if (ret != KRITIS3M_PKI_SUCCESS)
                 return ret;
 
@@ -38,7 +40,6 @@ int kritis3m_pki_init_issuer_token(char const* path, int slot_id, uint8_t const*
         return KRITIS3M_PKI_PKCS11_ERROR;
 #endif
 }
-
 
 /* Close the PKCS#11 token for the issuer key. */
 int kritis3m_pki_close_issuer_token(void)
@@ -58,7 +59,6 @@ int kritis3m_pki_close_issuer_token(void)
 #endif
 }
 
-
 /* Create a new IssuerCert object. */
 IssuerCert* issuerCert_new(void)
 {
@@ -73,13 +73,14 @@ IssuerCert* issuerCert_new(void)
         return cert;
 }
 
-
 /* Initialize the given IssuerCert `cert` using the PEM encoded data in the provided `buffer`
  * with `buffer_size` bytes. Check if it is compatible with the provided issuer private key.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t buffer_size,
+int issuerCert_initFromBuffer(IssuerCert* cert,
+                              uint8_t const* buffer,
+                              size_t buffer_size,
                               PrivateKey* issuerKey)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
@@ -118,11 +119,12 @@ int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t bu
                 issuerKey->primaryKey.init = true;
         }
 
-
         /* Import the public key from the certificate and check if the public key belongs
          * to the private key */
-        ret = importPublicKey(&issuerKey->primaryKey, decodedCert.publicKey,
-                              decodedCert.pubKeySize, decodedCert.keyOID);
+        ret = importPublicKey(&issuerKey->primaryKey,
+                              decodedCert.publicKey,
+                              decodedCert.pubKeySize,
+                              decodedCert.keyOID);
         if (ret != 0)
                 ERROR_OUT(ret, "Failed to import public key from issuer cert: %d", ret);
 
@@ -134,17 +136,23 @@ int issuerCert_initFromBuffer(IssuerCert* cert, uint8_t const* buffer, size_t bu
                         /* Initialize the key */
                         ret = initPrivateKey(&issuerKey->alternativeKey, decodedCert.sapkiOID);
                         if (ret != 0)
-                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize alternative private key: %d", ret);
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR,
+                                          "Failed to initialize alternative private key: %d",
+                                          ret);
 
                         issuerKey->alternativeKey.init = true;
                 }
 
                 /* Import the alternative public key from the certificate and check if the
                  * the public key belongs to the private key */
-                ret = importPublicKey(&issuerKey->alternativeKey, decodedCert.sapkiDer,
-                                decodedCert.sapkiLen, decodedCert.sapkiOID);
+                ret = importPublicKey(&issuerKey->alternativeKey,
+                                      decodedCert.sapkiDer,
+                                      decodedCert.sapkiLen,
+                                      decodedCert.sapkiOID);
                 if (ret != 0)
-                        ERROR_OUT(ret, "Failed to import alternative public key from issuer cert: %d", ret);
+                        ERROR_OUT(ret,
+                                  "Failed to import alternative public key from issuer cert: %d",
+                                  ret);
         }
 #endif
 
@@ -170,7 +178,6 @@ cleanup:
         return ret;
 }
 
-
 /* Free the memory of given IssuerCert */
 void issuerCert_free(IssuerCert* cert)
 {
@@ -184,7 +191,6 @@ void issuerCert_free(IssuerCert* cert)
                 free(cert);
         }
 }
-
 
 /* Create a new OutputCert object. */
 OutputCert* outputCert_new(void)
@@ -202,7 +208,6 @@ OutputCert* outputCert_new(void)
 
         return outputCert;
 }
-
 
 /* Initialize the given OutputCert from the CSR, PEM encoded in the provided `bufffer` with
  * `buffer_size` bytes.
@@ -240,7 +245,8 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize RSA key: %d", ret);
 
                 outputCert->ownKey.certKeyType = RSA_TYPE;
-                ret = wc_RsaPublicKeyDecode(decodedCsr.publicKey, &index,
+                ret = wc_RsaPublicKeyDecode(decodedCsr.publicKey,
+                                            &index,
                                             &outputCert->ownKey.key.rsa,
                                             decodedCsr.pubKeySize);
         }
@@ -251,19 +257,18 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize ECC key: %d", ret);
 
                 outputCert->ownKey.certKeyType = ECC_TYPE;
-                ret = wc_EccPublicKeyDecode(decodedCsr.publicKey, &index,
+                ret = wc_EccPublicKeyDecode(decodedCsr.publicKey,
+                                            &index,
                                             &outputCert->ownKey.key.ecc,
                                             decodedCsr.pubKeySize);
         }
         else if (
-        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
-                 (decodedCsr.keyOID == DILITHIUM_LEVEL2k) ||
-                 (decodedCsr.keyOID == DILITHIUM_LEVEL3k) ||
-                 (decodedCsr.keyOID == DILITHIUM_LEVEL5k) ||
-        #endif
-                 (decodedCsr.keyOID == ML_DSA_LEVEL2k) ||
-                 (decodedCsr.keyOID == ML_DSA_LEVEL3k) ||
-                 (decodedCsr.keyOID == ML_DSA_LEVEL5k))
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                (decodedCsr.keyOID == DILITHIUM_LEVEL2k) ||
+                (decodedCsr.keyOID == DILITHIUM_LEVEL3k) || (decodedCsr.keyOID == DILITHIUM_LEVEL5k) ||
+#endif
+                (decodedCsr.keyOID == ML_DSA_LEVEL2k) || (decodedCsr.keyOID == ML_DSA_LEVEL3k) ||
+                (decodedCsr.keyOID == ML_DSA_LEVEL5k))
         {
                 wc_dilithium_init(&outputCert->ownKey.key.dilithium);
                 if (ret != 0)
@@ -283,28 +288,35 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                         outputCert->ownKey.certKeyType = ML_DSA_LEVEL5_TYPE;
                         ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, WC_ML_DSA_87);
                         break;
-        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
                 case DILITHIUM_LEVEL2k:
                         outputCert->ownKey.certKeyType = DILITHIUM_LEVEL2_TYPE;
-                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, WC_ML_DSA_44_DRAFT);
+                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium,
+                                                     WC_ML_DSA_44_DRAFT);
                         break;
                 case DILITHIUM_LEVEL3k:
                         outputCert->ownKey.certKeyType = DILITHIUM_LEVEL3_TYPE;
-                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, WC_ML_DSA_65_DRAFT);
+                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium,
+                                                     WC_ML_DSA_65_DRAFT);
                         break;
                 case DILITHIUM_LEVEL5k:
                         outputCert->ownKey.certKeyType = DILITHIUM_LEVEL5_TYPE;
-                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium, WC_ML_DSA_87_DRAFT);
+                        ret = wc_dilithium_set_level(&outputCert->ownKey.key.dilithium,
+                                                     WC_ML_DSA_87_DRAFT);
                         break;
-        #endif
+#endif
                 default:
-                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported Dilithium key type: %d", decodedCsr.keyOID);
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED,
+                                  "Unsupported Dilithium key type: %d",
+                                  decodedCsr.keyOID);
                 }
                 if (ret < 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to set Dilithium level: %d", ret);
 
-                ret = wc_Dilithium_PublicKeyDecode(decodedCsr.publicKey, &index,
-                                &outputCert->ownKey.key.dilithium, decodedCsr.pubKeySize);
+                ret = wc_Dilithium_PublicKeyDecode(decodedCsr.publicKey,
+                                                   &index,
+                                                   &outputCert->ownKey.key.dilithium,
+                                                   decodedCsr.pubKeySize);
         }
 #ifdef HAVE_FALCON
         else if ((decodedCsr.keyOID == FALCON_LEVEL1k) || (decodedCsr.keyOID == FALCON_LEVEL5k))
@@ -324,13 +336,17 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                         ret = wc_falcon_set_level(&outputCert->ownKey.key.falcon, 5);
                         break;
                 default:
-                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported Falcon key type: %d", decodedCsr.keyOID);
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED,
+                                  "Unsupported Falcon key type: %d",
+                                  decodedCsr.keyOID);
                 }
                 if (ret < 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to set Falcon level: %d", ret);
 
-                ret = wc_Falcon_PublicKeyDecode(decodedCsr.publicKey, &index,
-                                &outputCert->ownKey.key.falcon, decodedCsr.pubKeySize);
+                ret = wc_Falcon_PublicKeyDecode(decodedCsr.publicKey,
+                                                &index,
+                                                &outputCert->ownKey.key.falcon,
+                                                decodedCsr.pubKeySize);
         }
 #endif
         else if (decodedCsr.keyOID == ED25519k)
@@ -340,7 +356,8 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize Ed25519 key: %d", ret);
 
                 outputCert->ownKey.certKeyType = ED25519_TYPE;
-                ret = wc_Ed25519PublicKeyDecode(decodedCsr.publicKey, &index,
+                ret = wc_Ed25519PublicKeyDecode(decodedCsr.publicKey,
+                                                &index,
                                                 &outputCert->ownKey.key.ed25519,
                                                 decodedCsr.pubKeySize);
         }
@@ -351,16 +368,18 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize Ed448 key: %d", ret);
 
                 outputCert->ownKey.certKeyType = ED448_TYPE;
-                ret = wc_Ed448PublicKeyDecode(decodedCsr.publicKey, &index,
-                                                &outputCert->ownKey.key.ed448,
-                                                decodedCsr.pubKeySize);
+                ret = wc_Ed448PublicKeyDecode(decodedCsr.publicKey,
+                                              &index,
+                                              &outputCert->ownKey.key.ed448,
+                                              decodedCsr.pubKeySize);
         }
         else
-                ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported key type in CSR: %d", decodedCsr.keyOID);
+                ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED,
+                          "Unsupported key type in CSR: %d",
+                          decodedCsr.keyOID);
 
         if (ret < 0)
                 ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to decode public key: %d", ret);
-
 
         /* Init the certificate structure */
         wc_InitCert(&outputCert->cert);
@@ -379,17 +398,24 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
         if (decodedCsr.subjectSN)
                 strncpy(outputCert->cert.subject.sur, decodedCsr.subjectSN, decodedCsr.subjectSNLen);
         if (decodedCsr.subjectSND)
-                strncpy(outputCert->cert.subject.serialDev, decodedCsr.subjectSND, decodedCsr.subjectSNDLen);
+                strncpy(outputCert->cert.subject.serialDev,
+                        decodedCsr.subjectSND,
+                        decodedCsr.subjectSNDLen);
         if (decodedCsr.subjectCN)
-                strncpy(outputCert->cert.subject.commonName, decodedCsr.subjectCN, decodedCsr.subjectCNLen);
+                strncpy(outputCert->cert.subject.commonName,
+                        decodedCsr.subjectCN,
+                        decodedCsr.subjectCNLen);
         if (decodedCsr.subjectEmail)
-                strncpy(outputCert->cert.subject.email, decodedCsr.subjectEmail, decodedCsr.subjectEmailLen);
+                strncpy(outputCert->cert.subject.email,
+                        decodedCsr.subjectEmail,
+                        decodedCsr.subjectEmailLen);
 
         /* Copy the altNames */
         if (decodedCsr.altNames)
         {
                 /* Copy the altNames from the CSR to the new certificate. This uses WolfSSL internal API */
-                ret = FlattenAltNames(outputCert->cert.altNames, sizeof(outputCert->cert.altNames),
+                ret = FlattenAltNames(outputCert->cert.altNames,
+                                      sizeof(outputCert->cert.altNames),
                                       decodedCsr.altNames);
                 if (ret >= 0)
                 {
@@ -406,18 +432,22 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 /* Allocate buffer for the alternative public key */
                 outputCert->altPubKeyDer = (uint8_t*) malloc(decodedCsr.sapkiLen);
                 if (outputCert->altPubKeyDer == NULL)
-                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for alternative public key");
+                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR,
+                                  "Failed to allocate memory for alternative public key");
 
                 /* Copy the alternative public key */
                 memcpy(outputCert->altPubKeyDer, decodedCsr.sapkiDer, decodedCsr.sapkiLen);
 
                 /* Write the alternative public key as a non-critical extension */
-                ret = wc_SetCustomExtension(&outputCert->cert, 0,
+                ret = wc_SetCustomExtension(&outputCert->cert,
+                                            0,
                                             SubjectAltPublicKeyInfoExtension,
                                             outputCert->altPubKeyDer,
                                             decodedCsr.sapkiLen);
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR, "Failed to copy alternative public key from CSR: %d", ret);
+                        ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR,
+                                  "Failed to copy alternative public key from CSR: %d",
+                                  ret);
         }
 #endif
 
@@ -430,7 +460,6 @@ cleanup:
 
         return ret;
 }
-
 
 /* Set issuer data of the new OutputCert `outputCert` using data from IssuerCert `issuerCert`
  * and issuer private key `issuerKey`.
@@ -456,34 +485,45 @@ int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert, Pri
                 /* Get OID of signature algorithm */
                 outputCert->altSigAlg = getSigAlgForKey(&issuerKey->alternativeKey);
                 if (outputCert->altSigAlg <= 0)
-                        ERROR_OUT(outputCert->altSigAlg, "Failed to get alternative signature algorithm for issuer key");
+                        ERROR_OUT(outputCert->altSigAlg,
+                                  "Failed to get alternative signature algorithm for issuer key");
 
                 /* Get size of encoded signature algorithm */
                 ret = SetAlgoID(outputCert->altSigAlg, NULL, oidSigType, 0);
                 if (ret <= 0)
-                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to get size of alternative signature algorithm: %d", ret);
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR,
+                                  "Failed to get size of alternative signature algorithm: %d",
+                                  ret);
 
                 /* Allocate memory */
                 outputCert->altSigAlgDer = (uint8_t*) malloc(ret);
                 if (outputCert->altSigAlgDer == NULL)
-                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for alternative signature algorithm");
+                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR,
+                                  "Failed to allocate memory for alternative signature algorithm");
 
                 /* Encode signature algorithm */
                 ret = SetAlgoID(outputCert->altSigAlg, outputCert->altSigAlgDer, oidSigType, 0);
                 if (ret <= 0)
-                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to encode alternative signature algorithm: %d", ret);
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR,
+                                  "Failed to encode alternative signature algorithm: %d",
+                                  ret);
 
                 /* Write encoded signature algorithm as a non-critical extension */
-                ret = wc_SetCustomExtension(&outputCert->cert, 0,
+                ret = wc_SetCustomExtension(&outputCert->cert,
+                                            0,
                                             AltSignatureAlgorithmExtension,
-                                            outputCert->altSigAlgDer, ret);
+                                            outputCert->altSigAlgDer,
+                                            ret);
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR, "Failed to write alternative signature algorithm: %d", ret);
+                        ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR,
+                                  "Failed to write alternative signature algorithm: %d",
+                                  ret);
         }
 #endif
 
         /* Set the Subject Key Identifier to our own key */
-        ret = wc_SetSubjectKeyIdFromPublicKey_ex(&outputCert->cert, outputCert->ownKey.certKeyType,
+        ret = wc_SetSubjectKeyIdFromPublicKey_ex(&outputCert->cert,
+                                                 outputCert->ownKey.certKeyType,
                                                  &outputCert->ownKey.key);
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to set Subject Key Identifier");
@@ -496,18 +536,24 @@ int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert, Pri
                         ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to set issuer: %d", ret);
 
                 /* Set the Authority Key Identifier to the one of the issuer key */
-                ret = wc_SetAuthKeyIdFromPublicKey_ex(&outputCert->cert, issuerKey->primaryKey.certKeyType,
+                ret = wc_SetAuthKeyIdFromPublicKey_ex(&outputCert->cert,
+                                                      issuerKey->primaryKey.certKeyType,
                                                       &issuerKey->primaryKey.key);
                 if (ret != 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to set Authority Key Identifier: %d", ret);
+                        ERROR_OUT(KRITIS3M_PKI_CERT_ERROR,
+                                  "Failed to set Authority Key Identifier: %d",
+                                  ret);
         }
         else
         {
                 /* Set the Authority Key Identifier to our own key */
-                ret = wc_SetAuthKeyIdFromPublicKey_ex(&outputCert->cert, outputCert->ownKey.certKeyType,
+                ret = wc_SetAuthKeyIdFromPublicKey_ex(&outputCert->cert,
+                                                      outputCert->ownKey.certKeyType,
                                                       &outputCert->ownKey.key);
                 if (ret != 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to set Authority Key Identifier: %d", ret);
+                        ERROR_OUT(KRITIS3M_PKI_CERT_ERROR,
+                                  "Failed to set Authority Key Identifier: %d",
+                                  ret);
         }
 
         ret = KRITIS3M_PKI_SUCCESS;
@@ -516,12 +562,10 @@ cleanup:
         return ret;
 }
 
-
 static inline uint8_t itob(int number)
 {
-        return (uint8_t)number + 0x30;
+        return (uint8_t) number + 0x30;
 }
-
 
 /* write time to output, format */
 static void SetTime(struct tm* date, uint8_t* output, int* output_size)
@@ -529,9 +573,9 @@ static void SetTime(struct tm* date, uint8_t* output, int* output_size)
         int i = 0;
 
         output[i++] = itob((date->tm_year % 10000) / 1000);
-        output[i++] = itob((date->tm_year % 1000)  /  100);
-        output[i++] = itob((date->tm_year % 100)   /   10);
-        output[i++] = itob( date->tm_year % 10);
+        output[i++] = itob((date->tm_year % 1000) / 100);
+        output[i++] = itob((date->tm_year % 100) / 10);
+        output[i++] = itob(date->tm_year % 10);
 
         output[i++] = itob(date->tm_mon / 10);
         output[i++] = itob(date->tm_mon % 10);
@@ -548,15 +592,12 @@ static void SetTime(struct tm* date, uint8_t* output, int* output_size)
         output[i++] = itob(date->tm_sec / 10);
         output[i++] = itob(date->tm_sec % 10);
 
-        output[i++] = 'Z';  /* Zulu profile */
+        output[i++] = 'Z'; /* Zulu profile */
 
         *output_size = i;
 }
 
-
-static int SetValidity(uint8_t* before, int* before_size,
-                       uint8_t* after, int* after_size,
-                       int daysValid)
+static int SetValidity(uint8_t* before, int* before_size, uint8_t* after, int* after_size, int daysValid)
 {
         int ret = 0;
         time_t now;
@@ -571,7 +612,7 @@ static int SetValidity(uint8_t* before, int* before_size,
 #else
         tmpTime = NULL;
 #endif
-        (void)tmpTime;
+        (void) tmpTime;
 
         now = wc_Time(0);
 
@@ -584,12 +625,12 @@ static int SetValidity(uint8_t* before, int* before_size,
 
                 /* adjust */
                 localTime.tm_year += 1900;
-                localTime.tm_mon +=    1;
+                localTime.tm_mon += 1;
 
                 SetTime(&localTime, before, before_size);
 
                 /* add daysValid of seconds */
-                then = now + (daysValid * (time_t)86400);
+                then = now + (daysValid * (time_t) 86400);
                 expandedTime = XGMTIME(&then, tmpTime);
         }
         if (ret == 0)
@@ -598,14 +639,13 @@ static int SetValidity(uint8_t* before, int* before_size,
 
                 /* adjust */
                 localTime.tm_year += 1900;
-                localTime.tm_mon  +=    1;
+                localTime.tm_mon += 1;
 
                 SetTime(&localTime, after, after_size);
         }
 
         return ret;
 }
-
 
 /* Set the validity period to `days` days of the new OutputCert `outputCert`.
  *
@@ -617,8 +657,10 @@ int outputCert_setValidity(OutputCert* outputCert, int days)
         {
                 outputCert->cert.daysValid = days;
 
-                int ret = SetValidity(outputCert->cert.beforeDate + 2, &outputCert->cert.beforeDateSz,
-                                      outputCert->cert.afterDate + 2, &outputCert->cert.afterDateSz,
+                int ret = SetValidity(outputCert->cert.beforeDate + 2,
+                                      &outputCert->cert.beforeDateSz,
+                                      outputCert->cert.afterDate + 2,
+                                      &outputCert->cert.afterDateSz,
                                       days);
                 if (ret != 0)
                         return KRITIS3M_PKI_CERT_ERROR;
@@ -628,7 +670,6 @@ int outputCert_setValidity(OutputCert* outputCert, int days)
         else
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
 }
-
 
 /* Configure the new OutputCert to be a CA certificate, capable of signing new certificates. */
 int outputCert_configureAsCA(OutputCert* outputCert)
@@ -645,7 +686,6 @@ int outputCert_configureAsCA(OutputCert* outputCert)
 
         return KRITIS3M_PKI_SUCCESS;
 }
-
 
 /* Configure the new OutputCert to be an entity certificate for authentication. */
 int outputCert_configureAsEntity(OutputCert* outputCert)
@@ -666,7 +706,6 @@ int outputCert_configureAsEntity(OutputCert* outputCert)
 
         return KRITIS3M_PKI_SUCCESS;
 }
-
 
 /* Finalize the new OutputCert by signing it with the issuer private key. Store the final PEM
  * encoded output in the buffer `buffer`. On function entry, `buffer_size` must contain the
@@ -707,32 +746,48 @@ int outputCert_finalize(OutputCert* outputCert, PrivateKey* issuerKey, uint8_t* 
                 outputCert->cert.sigType = 0;
 
                 /* Generate the PreTBS */
-                ret = wc_MakeCert_ex(&outputCert->cert, derBuffer, LARGE_TEMP_SZ,
+                ret = wc_MakeCert_ex(&outputCert->cert,
+                                     derBuffer,
+                                     LARGE_TEMP_SZ,
                                      outputCert->ownKey.certKeyType,
-                                     &outputCert->ownKey.key, &rng);
+                                     &outputCert->ownKey.key,
+                                     &rng);
                 if (ret <= 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to generate temporary certificate: %d", ret);
+                        ERROR_OUT(KRITIS3M_PKI_CERT_ERROR,
+                                  "Failed to generate temporary certificate: %d",
+                                  ret);
                 derSize = ret;
 
                 /* Allocate buffer for the alternative signature */
                 outputCert->altSigValDer = (uint8_t*) malloc(LARGE_TEMP_SZ);
                 if (outputCert->altSigValDer == NULL)
-                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for alternative signature");
+                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR,
+                                  "Failed to allocate memory for alternative signature");
 
                 /* Generate the alternative signature. */
-                ret = wc_MakeSigWithBitStr(outputCert->altSigValDer, LARGE_TEMP_SZ,
-                                           outputCert->altSigAlg, derBuffer,
-                                           derSize, issuerKey->alternativeKey.certKeyType,
-                                           &issuerKey->alternativeKey.key, &rng);
+                ret = wc_MakeSigWithBitStr(outputCert->altSigValDer,
+                                           LARGE_TEMP_SZ,
+                                           outputCert->altSigAlg,
+                                           derBuffer,
+                                           derSize,
+                                           issuerKey->alternativeKey.certKeyType,
+                                           &issuerKey->alternativeKey.key,
+                                           &rng);
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_SIGN_ERROR, "Failed to generate alternative signature: %d", ret);
+                        ERROR_OUT(KRITIS3M_PKI_CERT_SIGN_ERROR,
+                                  "Failed to generate alternative signature: %d",
+                                  ret);
 
                 /* Store the alternative signature in the new certificate */
-                ret = wc_SetCustomExtension(&outputCert->cert, 0,
+                ret = wc_SetCustomExtension(&outputCert->cert,
+                                            0,
                                             AltSignatureValueExtension,
-                                            outputCert->altSigValDer, ret);
+                                            outputCert->altSigValDer,
+                                            ret);
                 if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR, "Failed to write alternative signature: %d", ret);
+                        ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR,
+                                  "Failed to write alternative signature: %d",
+                                  ret);
 
                 /* Restore the original signature type */
                 outputCert->cert.sigType = sigType;
@@ -740,16 +795,23 @@ int outputCert_finalize(OutputCert* outputCert, PrivateKey* issuerKey, uint8_t* 
 #endif
 
         /* Finally, generate the final certificate. */
-        ret = wc_MakeCert_ex(&outputCert->cert, derBuffer, LARGE_TEMP_SZ,
+        ret = wc_MakeCert_ex(&outputCert->cert,
+                             derBuffer,
+                             LARGE_TEMP_SZ,
                              outputCert->ownKey.certKeyType,
-                             &outputCert->ownKey.key, &rng);
+                             &outputCert->ownKey.key,
+                             &rng);
         if (ret <= 0)
                 ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to generate certificate: %d", ret);
 
         /* Sign final certificate. */
-        ret = wc_SignCert_ex(outputCert->cert.bodySz, outputCert->cert.sigType,
-                             derBuffer, LARGE_TEMP_SZ, issuerKey->primaryKey.certKeyType,
-                             &issuerKey->primaryKey.key, &rng);
+        ret = wc_SignCert_ex(outputCert->cert.bodySz,
+                             outputCert->cert.sigType,
+                             derBuffer,
+                             LARGE_TEMP_SZ,
+                             issuerKey->primaryKey.certKeyType,
+                             &issuerKey->primaryKey.key,
+                             &rng);
         if (ret <= 0)
                 ERROR_OUT(KRITIS3M_PKI_CERT_SIGN_ERROR, "Failed to sign certificate: %d", ret);
 
@@ -774,7 +836,6 @@ cleanup:
         return ret;
 }
 
-
 /* Free the memory of given OutputCert */
 void outputCert_free(OutputCert* outputCert)
 {
@@ -792,4 +853,3 @@ void outputCert_free(OutputCert* outputCert)
                 free(outputCert);
         }
 }
-

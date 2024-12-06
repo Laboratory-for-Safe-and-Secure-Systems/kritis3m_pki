@@ -1,38 +1,38 @@
 
-#include <stdio.h>
-#include <string.h>
 #include <errno.h>
 #include <getopt.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "cli_common.h"
 #include "kritis3m_pki_client.h"
 
 #include "logging.h"
 
-
 LOG_MODULE_CREATE(kritis3m_se_importer);
 
+#define ERROR_OUT(...)                                                                             \
+        {                                                                                          \
+                LOG_ERROR(__VA_ARGS__);                                                            \
+                ret = 1;                                                                           \
+                goto exit;                                                                         \
+        }
 
-#define ERROR_OUT(...) { LOG_ERROR(__VA_ARGS__); ret = 1; goto exit; }
-
-
-static const struct option cli_options[] =
-{
-        { "key",            required_argument, 0, 0x01 },
-        { "key_label",      required_argument, 0, 0x02 },
-        { "alt_key",        required_argument, 0, 0x03 },
-        { "alt_key_label",  required_argument, 0, 0x04 },
-        { "module_path",     required_argument, 0, 0x05 },
-        { "slot",           required_argument, 0, 0x06 },
-        { "pin",            required_argument, 0, 0x07 },
-        { "verbose",        no_argument,       0, 'v'  },
-        { "debug",          no_argument,       0, 'd'  },
-        { "help",           no_argument,       0, 'h'  },
-        { NULL, 0, NULL, 0}
+static const struct option cli_options[] = {
+        {"key", required_argument, 0, 0x01},
+        {"key_label", required_argument, 0, 0x02},
+        {"alt_key", required_argument, 0, 0x03},
+        {"alt_key_label", required_argument, 0, 0x04},
+        {"module_path", required_argument, 0, 0x05},
+        {"slot", required_argument, 0, 0x06},
+        {"pin", required_argument, 0, 0x07},
+        {"verbose", no_argument, 0, 'v'},
+        {"debug", no_argument, 0, 'd'},
+        {"help", no_argument, 0, 'h'},
+        {NULL, 0, NULL, 0},
 };
 
-
-void print_help(char *prog_name)
+void print_help(char* prog_name)
 {
         printf("Usage: %s [OPTIONS]\r\n", prog_name);
         printf("\nKey file input:\r\n");
@@ -45,7 +45,8 @@ void print_help(char *prog_name)
 
         printf("\nSecure Element:\r\n");
         printf("  --module_path <file>          Path to the PKCS#11 module library\r\n");
-        printf("  --slot <id>                   Slot id of the secure element containing the issuer keys (default is first available)\r\n");
+        printf("  --slot <id>                   Slot id of the secure element containing the "
+               "issuer keys (default is first available)\r\n");
         printf("  --pin <pin>                   PIN for the secure element\r\n");
 
         printf("\nGeneral:\r\n");
@@ -53,7 +54,6 @@ void print_help(char *prog_name)
         printf("  --debug                       Enable debug output\r\n");
         printf("  --help                        Print this help\r\n");
 }
-
 
 static void pki_lib_log_callback(int32_t level, char const* message)
 {
@@ -77,7 +77,6 @@ static void pki_lib_log_callback(int32_t level, char const* message)
         }
 }
 
-
 int main(int argc, char** argv)
 {
         int ret = 0;
@@ -98,13 +97,11 @@ int main(int argc, char** argv)
         int slot = -1;
         int deviceId = -1;
 
-
         static const size_t bufferSize = 32 * 1024;
         size_t bytesInBuffer = bufferSize;
         uint8_t* buffer = NULL;
 
         PrivateKey* key = NULL;
-
 
         /* Parse CLI args */
         if (argc < 2)
@@ -122,42 +119,42 @@ int main(int argc, char** argv)
 
                 switch (result)
                 {
-                        case 0x01: /* key */
-                                keyPath = optarg;
-                                break;
-                        case 0x02: /* key_label */
-                                keyLabel = optarg;
-                                break;
-                        case 0x03: /* alt_key */
-                                altKeyPath = optarg;
-                                break;
-                        case 0x04: /* alt_key_label */
-                                altKeyLabel = optarg;
-                                break;
-                        case 0x05: /* module_path */
-                                modulePath = optarg;
-                                break;
-                        case 0x06: /* slot */
-                                slot = strtol(optarg, NULL, 10);
-                                break;
-                        case 0x07: /* pin */
-                                pin = optarg;
-                                pinSize = strlen(pin);
-                                break;
-                        case 'v':
-                                LOG_LVL_SET(LOG_LVL_INFO);
-                                break;
-                        case 'd':
-                                LOG_LVL_SET(LOG_LVL_DEBUG);
-                                break;
-                        case 'h':
-                                print_help(argv[0]);
-                                exit(0);
-                                break;
-                        default:
-                                fprintf(stderr, "unknown option: %c\n", result);
-                                print_help(argv[0]);
-                                exit(-1);
+                case 0x01: /* key */
+                        keyPath = optarg;
+                        break;
+                case 0x02: /* key_label */
+                        keyLabel = optarg;
+                        break;
+                case 0x03: /* alt_key */
+                        altKeyPath = optarg;
+                        break;
+                case 0x04: /* alt_key_label */
+                        altKeyLabel = optarg;
+                        break;
+                case 0x05: /* module_path */
+                        modulePath = optarg;
+                        break;
+                case 0x06: /* slot */
+                        slot = strtol(optarg, NULL, 10);
+                        break;
+                case 0x07: /* pin */
+                        pin = optarg;
+                        pinSize = strlen(pin);
+                        break;
+                case 'v':
+                        LOG_LVL_SET(LOG_LVL_INFO);
+                        break;
+                case 'd':
+                        LOG_LVL_SET(LOG_LVL_DEBUG);
+                        break;
+                case 'h':
+                        print_help(argv[0]);
+                        exit(0);
+                        break;
+                default:
+                        fprintf(stderr, "unknown option: %c\n", result);
+                        print_help(argv[0]);
+                        exit(-1);
                 }
         }
 
@@ -174,13 +171,16 @@ int main(int argc, char** argv)
         };
         ret = kritis3m_pki_init(&pki_lib_config);
         if (ret != KRITIS3M_PKI_SUCCESS)
-                ERROR_OUT("unable to initialize PKI libraries: %s (%d)", kritis3m_pki_error_message(ret), ret);
-
+                ERROR_OUT("unable to initialize PKI libraries: %s (%d)",
+                          kritis3m_pki_error_message(ret),
+                          ret);
 
         /* Initialize the PKCS#11 module */
-        deviceId = kritis3m_pki_init_entity_token(modulePath, slot, (uint8_t const*)pin, pinSize);
+        deviceId = kritis3m_pki_init_entity_token(modulePath, slot, (uint8_t const*) pin, pinSize);
         if (deviceId < KRITIS3M_PKI_SUCCESS)
-                ERROR_OUT("unable to initialize token: %s (%d)", kritis3m_pki_error_message(deviceId), deviceId);
+                ERROR_OUT("unable to initialize token: %s (%d)",
+                          kritis3m_pki_error_message(deviceId),
+                          deviceId);
 
         /* Prepare the key */
         key = privateKey_new();
@@ -194,7 +194,9 @@ int main(int argc, char** argv)
 
                 ret = privateKey_setExternalRef(key, deviceId, keyLabel);
                 if (ret != KRITIS3M_PKI_SUCCESS)
-                        ERROR_OUT("unable to set external reference for key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                        ERROR_OUT("unable to set external reference for key: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
 
                 /* Check if an alternative key gets its own label */
                 if (altKeyLabel != NULL)
@@ -203,7 +205,9 @@ int main(int argc, char** argv)
 
                         ret = privateKey_setAltExternalRef(key, deviceId, altKeyLabel);
                         if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to set external reference for alt key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                                ERROR_OUT("unable to set external reference for alt key: %s (%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
                 }
         }
         else
@@ -222,7 +226,7 @@ int main(int argc, char** argv)
                 /* Load key */
                 ret = privateKey_loadKeyFromBuffer(key, buffer, bytesInBuffer);
                 if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to parse key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                        ERROR_OUT("unable to parse key: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
                 /* Load an alternative key */
                 if (altKeyPath != NULL)
@@ -238,7 +242,9 @@ int main(int argc, char** argv)
                         /* Load key */
                         ret = privateKey_loadAltKeyFromBuffer(key, buffer, bytesInBuffer);
                         if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to parse alt key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                                ERROR_OUT("unable to parse alt key: %s (%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
                 }
         }
         else
@@ -261,4 +267,3 @@ exit:
 
         return ret;
 }
-

@@ -1,7 +1,7 @@
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
 
 #include "cli_common.h"
 #include "kritis3m_pki_client.h"
@@ -11,12 +11,14 @@
 
 #include "logging.h"
 
-
 LOG_MODULE_CREATE(kritis3m_pki);
 
-
-#define ERROR_OUT(...) { LOG_ERROR(__VA_ARGS__); ret = 1; goto exit; }
-
+#define ERROR_OUT(...)                                                                             \
+        {                                                                                          \
+                LOG_ERROR(__VA_ARGS__);                                                            \
+                ret = 1;                                                                           \
+                goto exit;                                                                         \
+        }
 
 static void pki_lib_log_callback(int32_t level, char const* message)
 {
@@ -40,7 +42,6 @@ static void pki_lib_log_callback(int32_t level, char const* message)
         }
 }
 
-
 int main(int argc, char** argv)
 {
         int ret = 0;
@@ -61,10 +62,8 @@ int main(int argc, char** argv)
         SigningRequest* request = NULL;
         OutputCert* outputCert = NULL;
 
-
         /* Parse the command line arguments */
-        ret = parse_cli_arguments(&app_config, &paths, &gen_info, &metadata,
-                                  &pkcs11, argc, argv);
+        ret = parse_cli_arguments(&app_config, &paths, &gen_info, &metadata, &pkcs11, argc, argv);
         LOG_LVL_SET(app_config.log_level);
         if (ret != 0)
                 ERROR_OUT("unable to parse command line arguments");
@@ -82,7 +81,9 @@ int main(int argc, char** argv)
         };
         ret = kritis3m_pki_init(&pki_lib_config);
         if (ret != KRITIS3M_PKI_SUCCESS)
-                ERROR_OUT("unable to initialize PKI libraries: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                ERROR_OUT("unable to initialize PKI libraries: %s (%d)",
+                          kritis3m_pki_error_message(ret),
+                          ret);
 
         /* Load the entity key */
         entityKey = privateKey_new();
@@ -92,27 +93,34 @@ int main(int argc, char** argv)
         if (paths.entityKeyPath != NULL)
         {
                 /* Check if an external private key should be used */
-                if (strncmp(paths.entityKeyPath, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) == 0)
+                if (strncmp(paths.entityKeyPath, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) ==
+                    0)
                 {
                         LOG_INFO("Referencing external entity key with label \"%s\"",
                                  paths.entityKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
 
                         /* Initialize the related PKCS#11 token */
-                        pkcs11.entityModule.deviceId = kritis3m_pki_init_entity_token(pkcs11.entityModule.path,
-                                                                                      pkcs11.entityModule.slot,
-                                                                                      (uint8_t const*)pkcs11.entityModule.pin,
-                                                                                      pkcs11.entityModule.pinLen);
+                        pkcs11.entityModule
+                                .deviceId = kritis3m_pki_init_entity_token(pkcs11.entityModule.path,
+                                                                           pkcs11.entityModule.slot,
+                                                                           (uint8_t const*) pkcs11
+                                                                                   .entityModule.pin,
+                                                                           pkcs11.entityModule.pinLen);
                         if (pkcs11.entityModule.deviceId < KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to initialize entity token: %s (%d)",
                                           kritis3m_pki_error_message(pkcs11.entityModule.deviceId),
                                           pkcs11.entityModule.deviceId);
 
                         /* Set the external reference */
-                        ret = privateKey_setExternalRef(entityKey, pkcs11.entityModule.deviceId,
-                                                        paths.entityKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
+                        ret = privateKey_setExternalRef(entityKey,
+                                                        pkcs11.entityModule.deviceId,
+                                                        paths.entityKeyPath +
+                                                                PKCS11_LABEL_IDENTIFIER_LEN);
                         if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to set external reference for entity key: %s (%d)",
-                                          kritis3m_pki_error_message(ret), ret);
+                                ERROR_OUT("unable to set external reference for entity key: %s "
+                                          "(%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
                 }
                 else
                 {
@@ -122,19 +130,24 @@ int main(int argc, char** argv)
                         bytesInBuffer = bufferSize;
                         ret = readFile(paths.entityKeyPath, buffer, &bytesInBuffer);
                         if (ret < 0)
-                                ERROR_OUT("unable to read entity key file from \"%s\"", paths.entityKeyPath);
+                                ERROR_OUT("unable to read entity key file from \"%s\"",
+                                          paths.entityKeyPath);
 
                         /* Load key */
                         ret = privateKey_loadKeyFromBuffer(entityKey, buffer, bytesInBuffer);
                         if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to parse entity key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                                ERROR_OUT("unable to parse entity key: %s (%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
                 }
 
                 /* Load an alternative entity key */
                 if (paths.entityAltKeyPath != NULL)
                 {
                         /* Check if an external alternative private key should be used */
-                        if (strncmp(paths.entityAltKeyPath, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) == 0)
+                        if (strncmp(paths.entityAltKeyPath,
+                                    PKCS11_LABEL_IDENTIFIER,
+                                    PKCS11_LABEL_IDENTIFIER_LEN) == 0)
                         {
                                 LOG_INFO("Referencing external entity alt key with label \"%s\"",
                                          paths.entityAltKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
@@ -143,37 +156,53 @@ int main(int argc, char** argv)
                                 if (pkcs11.entityModule.deviceId < 0)
                                 {
                                         /* Initialize the related PKCS#11 token */
-                                        pkcs11.entityModule.deviceId = kritis3m_pki_init_entity_token(pkcs11.entityModule.path,
-                                                                                      pkcs11.entityModule.slot,
-                                                                                      (uint8_t const*)pkcs11.entityModule.pin,
-                                                                                      pkcs11.entityModule.pinLen);
+                                        pkcs11.entityModule
+                                                .deviceId = kritis3m_pki_init_entity_token(pkcs11.entityModule
+                                                                                                   .path,
+                                                                                           pkcs11.entityModule
+                                                                                                   .slot,
+                                                                                           (uint8_t const*) pkcs11
+                                                                                                   .entityModule
+                                                                                                   .pin,
+                                                                                           pkcs11.entityModule
+                                                                                                   .pinLen);
                                         if (pkcs11.entityModule.deviceId < KRITIS3M_PKI_SUCCESS)
-                                                ERROR_OUT("unable to initialize entity token: %s (%d)",
-                                                          kritis3m_pki_error_message(pkcs11.entityModule.deviceId),
+                                                ERROR_OUT("unable to initialize entity token: %s "
+                                                          "(%d)",
+                                                          kritis3m_pki_error_message(
+                                                                  pkcs11.entityModule.deviceId),
                                                           pkcs11.entityModule.deviceId);
                                 }
 
                                 /* Set the external reference */
-                                ret = privateKey_setAltExternalRef(entityKey, pkcs11.entityModule.deviceId,
-                                                                   paths.entityKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
+                                ret = privateKey_setAltExternalRef(entityKey,
+                                                                   pkcs11.entityModule.deviceId,
+                                                                   paths.entityKeyPath +
+                                                                           PKCS11_LABEL_IDENTIFIER_LEN);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
-                                        ERROR_OUT("unable to set external reference for entity alt key: %s (%d)",
-                                                  kritis3m_pki_error_message(ret), ret);
+                                        ERROR_OUT("unable to set external reference for entity alt "
+                                                  "key: %s (%d)",
+                                                  kritis3m_pki_error_message(ret),
+                                                  ret);
                         }
                         else
                         {
-                                LOG_INFO("Loading entity alternative key from \"%s\"", paths.entityAltKeyPath);
+                                LOG_INFO("Loading entity alternative key from \"%s\"",
+                                         paths.entityAltKeyPath);
 
                                 /* Read file */
                                 bytesInBuffer = bufferSize;
                                 ret = readFile(paths.entityAltKeyPath, buffer, &bytesInBuffer);
                                 if (ret < 0)
-                                        ERROR_OUT("unable to read entity alt key file from \"%s\"", paths.entityAltKeyPath);
+                                        ERROR_OUT("unable to read entity alt key file from \"%s\"",
+                                                  paths.entityAltKeyPath);
 
                                 /* Load key */
                                 ret = privateKey_loadAltKeyFromBuffer(entityKey, buffer, bytesInBuffer);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
-                                        ERROR_OUT("unable to parse entity alt key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                                        ERROR_OUT("unable to parse entity alt key: %s (%d)",
+                                                  kritis3m_pki_error_message(ret),
+                                                  ret);
                         }
                 }
         }
@@ -196,7 +225,9 @@ int main(int argc, char** argv)
                         bytesInBuffer = bufferSize;
                         ret = privateKey_writeKeyToBuffer(entityKey, buffer, &bytesInBuffer);
                         if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to write key to buffer: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                                ERROR_OUT("unable to write key to buffer: %s (%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
 
                         ret = writeFile(paths.entityKeyOutputPath, buffer, bytesInBuffer, false);
                         if (ret < 0)
@@ -206,7 +237,8 @@ int main(int argc, char** argv)
                 {
                         if (paths.entityKeyPath == NULL)
                         {
-                                ERROR_OUT("No key output path specified and no external key referenced. The new key is lost, aborting.");
+                                ERROR_OUT("No key output path specified and no external key "
+                                          "referenced. The new key is lost, aborting.");
                         }
                 }
         }
@@ -218,7 +250,9 @@ int main(int argc, char** argv)
                 /* Generate the key */
                 ret = privateKey_generateAltKey(entityKey, gen_info.altKeyGenAlg);
                 if (ret != KRITIS3M_PKI_SUCCESS)
-                        ERROR_OUT("unable to generate alt key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                        ERROR_OUT("unable to generate alt key: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
 
                 /* Write the key to file if requested */
                 if ((paths.entityAltKeyOutputPath != NULL) || (paths.entityKeyOutputPath != NULL))
@@ -237,7 +271,8 @@ int main(int argc, char** argv)
                         ret = privateKey_writeAltKeyToBuffer(entityKey, buffer, &bytesInBuffer);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to write alt key to buffer: %s (%d)",
-                                          kritis3m_pki_error_message(ret), ret);
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
 
                         ret = writeFile(destination, buffer, bytesInBuffer, appendAltKey);
                         if (ret < 0)
@@ -253,27 +288,34 @@ int main(int argc, char** argv)
         if (paths.issuerKeyPath != NULL)
         {
                 /* Check if an external private key should be used */
-                if (strncmp(paths.issuerKeyPath, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) == 0)
+                if (strncmp(paths.issuerKeyPath, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) ==
+                    0)
                 {
                         LOG_INFO("Referencing external issuer key with label \"%s\"",
                                  paths.issuerKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
 
                         /* Initialize the related PKCS#11 token */
-                        pkcs11.issuerModule.deviceId = kritis3m_pki_init_issuer_token(pkcs11.issuerModule.path,
-                                                                                      pkcs11.issuerModule.slot,
-                                                                                      (uint8_t const*)pkcs11.issuerModule.pin,
-                                                                                      pkcs11.issuerModule.pinLen);
+                        pkcs11.issuerModule
+                                .deviceId = kritis3m_pki_init_issuer_token(pkcs11.issuerModule.path,
+                                                                           pkcs11.issuerModule.slot,
+                                                                           (uint8_t const*) pkcs11
+                                                                                   .issuerModule.pin,
+                                                                           pkcs11.issuerModule.pinLen);
                         if (pkcs11.issuerModule.deviceId < KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to initialize issuer token: %s (%d)",
                                           kritis3m_pki_error_message(pkcs11.issuerModule.deviceId),
                                           pkcs11.issuerModule.deviceId);
 
                         /* Set the external reference */
-                        ret = privateKey_setExternalRef(issuerKey, pkcs11.issuerModule.deviceId,
-                                                        paths.issuerKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
+                        ret = privateKey_setExternalRef(issuerKey,
+                                                        pkcs11.issuerModule.deviceId,
+                                                        paths.issuerKeyPath +
+                                                                PKCS11_LABEL_IDENTIFIER_LEN);
                         if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to set external reference for issuer key: %s (%d)",
-                                          kritis3m_pki_error_message(ret), ret);
+                                ERROR_OUT("unable to set external reference for issuer key: %s "
+                                          "(%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
                 }
                 else
                 {
@@ -283,19 +325,24 @@ int main(int argc, char** argv)
                         bytesInBuffer = bufferSize;
                         ret = readFile(paths.issuerKeyPath, buffer, &bytesInBuffer);
                         if (ret < 0)
-                                ERROR_OUT("unable to read issuer key file from \"%s\"", paths.issuerKeyPath);
+                                ERROR_OUT("unable to read issuer key file from \"%s\"",
+                                          paths.issuerKeyPath);
 
                         /* Load key */
                         ret = privateKey_loadKeyFromBuffer(issuerKey, buffer, bytesInBuffer);
                         if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to parse issuer key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                                ERROR_OUT("unable to parse issuer key: %s (%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
                 }
 
                 /* Load an alternative issuer key */
                 if (paths.issuerAltKeyPath != NULL)
                 {
                         /* Check if an external alternative private key should be used */
-                        if (strncmp(paths.issuerAltKeyPath, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) == 0)
+                        if (strncmp(paths.issuerAltKeyPath,
+                                    PKCS11_LABEL_IDENTIFIER,
+                                    PKCS11_LABEL_IDENTIFIER_LEN) == 0)
                         {
                                 LOG_INFO("Referencing external issuer alt key with label \"%s\"",
                                          paths.issuerAltKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
@@ -304,38 +351,53 @@ int main(int argc, char** argv)
                                 if (pkcs11.issuerModule.deviceId < 0)
                                 {
                                         /* Initialize the related PKCS#11 token */
-                                        pkcs11.issuerModule.deviceId = kritis3m_pki_init_issuer_token(pkcs11.issuerModule.path,
-                                                                                      pkcs11.issuerModule.slot,
-                                                                                      (uint8_t const*)pkcs11.issuerModule.pin,
-                                                                                      pkcs11.issuerModule.pinLen);
+                                        pkcs11.issuerModule
+                                                .deviceId = kritis3m_pki_init_issuer_token(pkcs11.issuerModule
+                                                                                                   .path,
+                                                                                           pkcs11.issuerModule
+                                                                                                   .slot,
+                                                                                           (uint8_t const*) pkcs11
+                                                                                                   .issuerModule
+                                                                                                   .pin,
+                                                                                           pkcs11.issuerModule
+                                                                                                   .pinLen);
                                         if (pkcs11.issuerModule.deviceId < KRITIS3M_PKI_SUCCESS)
-                                                ERROR_OUT("unable to initialize issuer token: %s (%d)",
-                                                          kritis3m_pki_error_message(pkcs11.issuerModule.deviceId),
+                                                ERROR_OUT("unable to initialize issuer token: %s "
+                                                          "(%d)",
+                                                          kritis3m_pki_error_message(
+                                                                  pkcs11.issuerModule.deviceId),
                                                           pkcs11.issuerModule.deviceId);
                                 }
 
                                 /* Set the external reference */
-                                ret = privateKey_setAltExternalRef(issuerKey, pkcs11.issuerModule.deviceId,
-                                                                   paths.issuerAltKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
+                                ret = privateKey_setAltExternalRef(issuerKey,
+                                                                   pkcs11.issuerModule.deviceId,
+                                                                   paths.issuerAltKeyPath +
+                                                                           PKCS11_LABEL_IDENTIFIER_LEN);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
-                                        ERROR_OUT("unable to set external reference for issuer alt key: %s (%d)",
-                                                  kritis3m_pki_error_message(ret), ret);
+                                        ERROR_OUT("unable to set external reference for issuer alt "
+                                                  "key: %s (%d)",
+                                                  kritis3m_pki_error_message(ret),
+                                                  ret);
                         }
                         else
                         {
-                                LOG_INFO("Loading alternative issuer key from \"%s\"", paths.issuerAltKeyPath);
+                                LOG_INFO("Loading alternative issuer key from \"%s\"",
+                                         paths.issuerAltKeyPath);
 
                                 /* Read file */
                                 bytesInBuffer = bufferSize;
                                 ret = readFile(paths.issuerAltKeyPath, buffer, &bytesInBuffer);
                                 if (ret < 0)
-                                        ERROR_OUT("unable to read issuer alt key file from \"%s\"", paths.issuerAltKeyPath);
+                                        ERROR_OUT("unable to read issuer alt key file from \"%s\"",
+                                                  paths.issuerAltKeyPath);
 
                                 /* Load key */
                                 ret = privateKey_loadAltKeyFromBuffer(issuerKey, buffer, bytesInBuffer);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
                                         ERROR_OUT("unable to parse issuer alt key: %s (%d)",
-                                                  kritis3m_pki_error_message(ret), ret);
+                                                  kritis3m_pki_error_message(ret),
+                                                  ret);
                         }
                 }
         }
@@ -346,7 +408,9 @@ int main(int argc, char** argv)
                 /* Copy the entitiyKey to the issuerKey */
                 ret = privateKey_copyKey(issuerKey, entityKey);
                 if (ret != KRITIS3M_PKI_SUCCESS)
-                        ERROR_OUT("unable to copy entity key to issuer key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                        ERROR_OUT("unable to copy entity key to issuer key: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
         }
 
         /* Load the issuer certificate */
@@ -368,7 +432,8 @@ int main(int argc, char** argv)
                 ret = issuerCert_initFromBuffer(issuerCert, buffer, bytesInBuffer, issuerKey);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to parse issuer cert: %s (%d)",
-                                  kritis3m_pki_error_message(ret), ret);
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
         }
 
         /* Check if we have to generate a new CSR of if the user provided one */
@@ -409,7 +474,6 @@ int main(int argc, char** argv)
                 ret = readFile(paths.csrInputPath, buffer, &bytesInBuffer);
                 if (ret < 0)
                         ERROR_OUT("unable to read CSR file from \"%s\"", paths.csrInputPath);
-
         }
 
         /* Check if we have to create an actual certificate */
@@ -427,7 +491,9 @@ int main(int argc, char** argv)
                 /* Set the issuer data */
                 ret = outputCert_setIssuerData(outputCert, issuerCert, issuerKey);
                 if (ret != KRITIS3M_PKI_SUCCESS)
-                        ERROR_OUT("unable to set issuer data: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                        ERROR_OUT("unable to set issuer data: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
 
                 /* Set the validity period */
                 outputCert_setValidity(outputCert, metadata.validity);
@@ -439,7 +505,9 @@ int main(int argc, char** argv)
                         /* Cert is a CA certificate */
                         ret = outputCert_configureAsCA(outputCert);
                         if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to configure new cert as CA: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                                ERROR_OUT("unable to configure new cert as CA: %s (%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
                 }
                 else
                 {
@@ -448,14 +516,18 @@ int main(int argc, char** argv)
                         /* Cert is an entity certificate */
                         ret = outputCert_configureAsEntity(outputCert);
                         if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to configure new cert as entity: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                                ERROR_OUT("unable to configure new cert as entity: %s (%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
                 }
 
                 /* Finalize the certificate. */
                 bytesInBuffer = bufferSize;
                 ret = outputCert_finalize(outputCert, issuerKey, buffer, &bytesInBuffer);
                 if (ret != KRITIS3M_PKI_SUCCESS)
-                        ERROR_OUT("unable to finalize new cert: %s (%d)", kritis3m_pki_error_message(ret), ret);
+                        ERROR_OUT("unable to finalize new cert: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
 
                 LOG_INFO("Writing certificate to \"%s\"", paths.certOutputFilePath);
 
@@ -485,4 +557,3 @@ exit:
 
         return ret;
 }
-
