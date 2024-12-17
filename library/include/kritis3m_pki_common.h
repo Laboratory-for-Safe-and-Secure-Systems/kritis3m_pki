@@ -7,25 +7,25 @@
 
 /* Properly set the API visibility */
 #if defined(BUILDING_KRITIS3M_PKI)
-        #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
-                #if defined(BUILDING_KRITIS3M_PKI_SHARED)
-                        #define KRITIS3M_PKI_API __declspec(dllexport)
-                #else
-                        #define KRITIS3M_PKI_API
-                #endif
-        #else
-                #define KRITIS3M_PKI_API
-        #endif
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
+#if defined(BUILDING_KRITIS3M_PKI_SHARED)
+#define KRITIS3M_PKI_API __declspec(dllexport)
+#else
+#define KRITIS3M_PKI_API
+#endif
+#else
+#define KRITIS3M_PKI_API
+#endif
 #else /* BUILDING_KRITIS3M_PKI */
-        #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
-                #if defined(BUILDING_KRITIS3M_PKI_SHARED)
-                        #define KRITIS3M_PKI_API __declspec(dllimport)
-                #else
-                        #define KRITIS3M_PKI_API
-                #endif
-        #else
-                #define KRITIS3M_PKI_API
-        #endif
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
+#if defined(BUILDING_KRITIS3M_PKI_SHARED)
+#define KRITIS3M_PKI_API __declspec(dllimport)
+#else
+#define KRITIS3M_PKI_API
+#endif
+#else
+#define KRITIS3M_PKI_API
+#endif
 #endif /* BUILDING_KRITIS3M_PKI */
 
 #define PKCS11_LABEL_IDENTIFIER "pkcs11:"
@@ -189,5 +189,8 @@ KRITIS3M_PKI_API int privateKey_writeAltKeyToBuffer(PrivateKey* key, uint8_t* bu
 
 /* Free the memory of given PrivateKey */
 KRITIS3M_PKI_API void privateKey_free(PrivateKey* key);
+
+/* Shutdown and cleanup for the KRITIS3M PKI libraries. */
+KRITIS3M_PKI_API void kritis3m_pki_shutdown(void);
 
 #endif /* KRITIS3M_PKI_COMMON_H */

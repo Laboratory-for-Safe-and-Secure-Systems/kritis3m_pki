@@ -4,9 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "cli_common.h"
 #include "kritis3m_pki_client.h"
 
+#include "file_io.h"
 #include "logging.h"
 
 LOG_MODULE_CREATE(kritis3m_se_importer);
@@ -16,6 +16,13 @@ LOG_MODULE_CREATE(kritis3m_se_importer);
                 LOG_ERROR(__VA_ARGS__);                                                            \
                 ret = 1;                                                                           \
                 goto exit;                                                                         \
+        }
+
+#define RESET_BUFFER()                                                                             \
+        {                                                                                          \
+                free(buffer);                                                                      \
+                buffer = NULL;                                                                     \
+                bytesInBuffer = 0;                                                                 \
         }
 
 static const struct option cli_options[] = {
@@ -97,8 +104,7 @@ int main(int argc, char** argv)
         int slot = -1;
         int deviceId = -1;
 
-        static const size_t bufferSize = 32 * 1024;
-        size_t bytesInBuffer = bufferSize;
+        size_t bytesInBuffer = 0;
         uint8_t* buffer = NULL;
 
         PrivateKey* key = NULL;
@@ -158,11 +164,6 @@ int main(int argc, char** argv)
                 }
         }
 
-        /* Create a buffer to read the file contents */
-        buffer = (uint8_t*) malloc(bufferSize);
-        if (buffer == NULL)
-                ERROR_OUT("unable to allocate buffer");
-
         /* Initialize the PKI libraries */
         kritis3m_pki_configuration pki_lib_config = {
                 .logging_enabled = true,
@@ -218,8 +219,7 @@ int main(int argc, char** argv)
                 LOG_INFO("Loading key from \"%s\"", keyPath);
 
                 /* Read file */
-                bytesInBuffer = bufferSize;
-                ret = readFile(keyPath, buffer, &bytesInBuffer);
+                ret = read_file(keyPath, &buffer, &bytesInBuffer);
                 if (ret < 0)
                         ERROR_OUT("unable to read key file from \"%s\"", keyPath);
 
@@ -228,14 +228,15 @@ int main(int argc, char** argv)
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to parse key: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
+                RESET_BUFFER();
+
                 /* Load an alternative key */
                 if (altKeyPath != NULL)
                 {
                         LOG_INFO("Loading alternative key from \"%s\"", altKeyPath);
 
                         /* Read file */
-                        bytesInBuffer = bufferSize;
-                        ret = readFile(altKeyPath, buffer, &bytesInBuffer);
+                        ret = read_file(altKeyPath, &buffer, &bytesInBuffer);
                         if (ret < 0)
                                 ERROR_OUT("unable to read alt key file from \"%s\"", altKeyPath);
 
@@ -245,6 +246,8 @@ int main(int argc, char** argv)
                                 ERROR_OUT("unable to parse alt key: %s (%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
+
+                        RESET_BUFFER();
                 }
         }
         else
@@ -264,6 +267,8 @@ exit:
 
         if (buffer != NULL)
                 free(buffer);
+
+        kritis3m_pki_shutdown();
 
         return ret;
 }

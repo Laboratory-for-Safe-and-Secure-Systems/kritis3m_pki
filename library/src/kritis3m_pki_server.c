@@ -199,6 +199,8 @@ OutputCert* outputCert_new(void)
         if (outputCert == NULL)
                 return NULL;
 
+        memset(&outputCert->ownKey, 0, sizeof(SinglePrivateKey));
+
         outputCert->ownKey.init = false;
         outputCert->altSigAlg = 0;
         outputCert->altPubKeyDer = NULL;
@@ -244,7 +246,10 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize RSA key: %d", ret);
 
+                outputCert->ownKey.type = RSAk;
                 outputCert->ownKey.certKeyType = RSA_TYPE;
+                outputCert->ownKey.init = true;
+
                 ret = wc_RsaPublicKeyDecode(decodedCsr.publicKey,
                                             &index,
                                             &outputCert->ownKey.key.rsa,
@@ -256,7 +261,10 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize ECC key: %d", ret);
 
+                outputCert->ownKey.type = ECDSAk;
                 outputCert->ownKey.certKeyType = ECC_TYPE;
+                outputCert->ownKey.init = true;
+
                 ret = wc_EccPublicKeyDecode(decodedCsr.publicKey,
                                             &index,
                                             &outputCert->ownKey.key.ecc,
@@ -273,6 +281,9 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 wc_dilithium_init(&outputCert->ownKey.key.dilithium);
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize Dilithium key: %d", ret);
+
+                outputCert->ownKey.type = decodedCsr.keyOID;
+                outputCert->ownKey.init = true;
 
                 switch (decodedCsr.keyOID)
                 {
@@ -325,6 +336,9 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize Falcon key: %d", ret);
 
+                outputCert->ownKey.type = decodedCsr.keyOID;
+                outputCert->ownKey.init = true;
+
                 switch (decodedCsr.keyOID)
                 {
                 case FALCON_LEVEL1k:
@@ -355,7 +369,10 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize Ed25519 key: %d", ret);
 
+                outputCert->ownKey.type = ED25519k;
                 outputCert->ownKey.certKeyType = ED25519_TYPE;
+                outputCert->ownKey.init = true;
+
                 ret = wc_Ed25519PublicKeyDecode(decodedCsr.publicKey,
                                                 &index,
                                                 &outputCert->ownKey.key.ed25519,
@@ -367,7 +384,10 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize Ed448 key: %d", ret);
 
+                outputCert->ownKey.type = ED448k;
                 outputCert->ownKey.certKeyType = ED448_TYPE;
+                outputCert->ownKey.init = true;
+
                 ret = wc_Ed448PublicKeyDecode(decodedCsr.publicKey,
                                               &index,
                                               &outputCert->ownKey.key.ed448,

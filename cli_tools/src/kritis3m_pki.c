@@ -3,12 +3,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "cli_common.h"
 #include "kritis3m_pki_client.h"
 #include "kritis3m_pki_server.h"
 
 #include "kritis3m_pki_cli_parsing.h"
 
+#include "file_io.h"
 #include "logging.h"
 
 LOG_MODULE_CREATE(kritis3m_pki);
@@ -18,6 +18,13 @@ LOG_MODULE_CREATE(kritis3m_pki);
                 LOG_ERROR(__VA_ARGS__);                                                            \
                 ret = 1;                                                                           \
                 goto exit;                                                                         \
+        }
+
+#define RESET_BUFFER()                                                                             \
+        {                                                                                          \
+                free(buffer);                                                                      \
+                buffer = NULL;                                                                     \
+                bytesInBuffer = 0;                                                                 \
         }
 
 static void pki_lib_log_callback(int32_t level, char const* message)
@@ -46,8 +53,8 @@ int main(int argc, char** argv)
 {
         int ret = 0;
 
-        static const size_t bufferSize = 32 * 1024;
-        size_t bytesInBuffer = bufferSize;
+        static const size_t outputBufferSize = 32 * 1024;
+        size_t bytesInBuffer = 0;
         uint8_t* buffer = NULL;
 
         application_config app_config = {0};
@@ -67,11 +74,6 @@ int main(int argc, char** argv)
         LOG_LVL_SET(app_config.log_level);
         if (ret != 0)
                 ERROR_OUT("unable to parse command line arguments");
-
-        /* Create a buffer to read the file contents */
-        buffer = (uint8_t*) malloc(bufferSize);
-        if (buffer == NULL)
-                ERROR_OUT("unable to allocate buffer");
 
         /* Initialize the PKI libraries */
         kritis3m_pki_configuration pki_lib_config = {
@@ -127,8 +129,7 @@ int main(int argc, char** argv)
                         LOG_INFO("Loading entity key from \"%s\"", paths.entityKeyPath);
 
                         /* Read file */
-                        bytesInBuffer = bufferSize;
-                        ret = readFile(paths.entityKeyPath, buffer, &bytesInBuffer);
+                        ret = read_file(paths.entityKeyPath, &buffer, &bytesInBuffer);
                         if (ret < 0)
                                 ERROR_OUT("unable to read entity key file from \"%s\"",
                                           paths.entityKeyPath);
@@ -139,6 +140,8 @@ int main(int argc, char** argv)
                                 ERROR_OUT("unable to parse entity key: %s (%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
+
+                        RESET_BUFFER();
                 }
 
                 /* Load an alternative entity key */
@@ -191,8 +194,7 @@ int main(int argc, char** argv)
                                          paths.entityAltKeyPath);
 
                                 /* Read file */
-                                bytesInBuffer = bufferSize;
-                                ret = readFile(paths.entityAltKeyPath, buffer, &bytesInBuffer);
+                                ret = read_file(paths.entityAltKeyPath, &buffer, &bytesInBuffer);
                                 if (ret < 0)
                                         ERROR_OUT("unable to read entity alt key file from \"%s\"",
                                                   paths.entityAltKeyPath);
@@ -203,6 +205,8 @@ int main(int argc, char** argv)
                                         ERROR_OUT("unable to parse entity alt key: %s (%d)",
                                                   kritis3m_pki_error_message(ret),
                                                   ret);
+
+                                RESET_BUFFER();
                         }
                 }
         }
@@ -222,16 +226,24 @@ int main(int argc, char** argv)
                 {
                         LOG_INFO("Writing key to \"%s\"", paths.entityKeyOutputPath);
 
-                        bytesInBuffer = bufferSize;
+                        /* Allocate memory */
+                        bytesInBuffer = outputBufferSize;
+                        buffer = (uint8_t*) malloc(outputBufferSize);
+                        if (buffer == NULL)
+                                ERROR_OUT("unable to allocate output buffer");
+
+                        /* Export PEM key */
                         ret = privateKey_writeKeyToBuffer(entityKey, buffer, &bytesInBuffer);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to write key to buffer: %s (%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
 
-                        ret = writeFile(paths.entityKeyOutputPath, buffer, bytesInBuffer, false);
+                        ret = write_file(paths.entityKeyOutputPath, buffer, bytesInBuffer, false);
                         if (ret < 0)
                                 ERROR_OUT("unable to write key to \"%s\"", paths.entityKeyOutputPath);
+
+                        RESET_BUFFER();
                 }
                 else
                 {
@@ -267,16 +279,23 @@ int main(int argc, char** argv)
 
                         LOG_INFO("Writing key to \"%s\"", destination);
 
-                        bytesInBuffer = bufferSize;
+                        /* Allocate memory */
+                        bytesInBuffer = outputBufferSize;
+                        buffer = (uint8_t*) malloc(outputBufferSize);
+                        if (buffer == NULL)
+                                ERROR_OUT("unable to allocate output buffer");
+
                         ret = privateKey_writeAltKeyToBuffer(entityKey, buffer, &bytesInBuffer);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to write alt key to buffer: %s (%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
 
-                        ret = writeFile(destination, buffer, bytesInBuffer, appendAltKey);
+                        ret = write_file(destination, buffer, bytesInBuffer, appendAltKey);
                         if (ret < 0)
                                 ERROR_OUT("unable to write alt key to \"%s\"", destination);
+
+                        RESET_BUFFER();
                 }
         }
 
@@ -322,8 +341,7 @@ int main(int argc, char** argv)
                         LOG_INFO("Loading issuer key from \"%s\"", paths.issuerKeyPath);
 
                         /* Read file */
-                        bytesInBuffer = bufferSize;
-                        ret = readFile(paths.issuerKeyPath, buffer, &bytesInBuffer);
+                        ret = read_file(paths.issuerKeyPath, &buffer, &bytesInBuffer);
                         if (ret < 0)
                                 ERROR_OUT("unable to read issuer key file from \"%s\"",
                                           paths.issuerKeyPath);
@@ -334,6 +352,8 @@ int main(int argc, char** argv)
                                 ERROR_OUT("unable to parse issuer key: %s (%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
+
+                        RESET_BUFFER();
                 }
 
                 /* Load an alternative issuer key */
@@ -386,8 +406,7 @@ int main(int argc, char** argv)
                                          paths.issuerAltKeyPath);
 
                                 /* Read file */
-                                bytesInBuffer = bufferSize;
-                                ret = readFile(paths.issuerAltKeyPath, buffer, &bytesInBuffer);
+                                ret = read_file(paths.issuerAltKeyPath, &buffer, &bytesInBuffer);
                                 if (ret < 0)
                                         ERROR_OUT("unable to read issuer alt key file from \"%s\"",
                                                   paths.issuerAltKeyPath);
@@ -398,6 +417,8 @@ int main(int argc, char** argv)
                                         ERROR_OUT("unable to parse issuer alt key: %s (%d)",
                                                   kritis3m_pki_error_message(ret),
                                                   ret);
+
+                                RESET_BUFFER();
                         }
                 }
         }
@@ -423,8 +444,7 @@ int main(int argc, char** argv)
                         ERROR_OUT("unable to allocate memory for issuer cert");
 
                 /* Read file */
-                bytesInBuffer = bufferSize;
-                ret = readFile(paths.issuerCertPath, buffer, &bytesInBuffer);
+                ret = read_file(paths.issuerCertPath, &buffer, &bytesInBuffer);
                 if (ret < 0)
                         ERROR_OUT("unable to read issuer cert file from \"%s\"", paths.issuerCertPath);
 
@@ -434,6 +454,8 @@ int main(int argc, char** argv)
                         ERROR_OUT("unable to parse issuer cert: %s (%d)",
                                   kritis3m_pki_error_message(ret),
                                   ret);
+
+                RESET_BUFFER();
         }
 
         /* Check if we have to generate a new CSR of if the user provided one */
@@ -449,8 +471,13 @@ int main(int argc, char** argv)
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to create CSR: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
+                /* Allocate memory */
+                bytesInBuffer = outputBufferSize;
+                buffer = (uint8_t*) malloc(outputBufferSize);
+                if (buffer == NULL)
+                        ERROR_OUT("unable to allocate output buffer");
+
                 /* Finalize the CSR */
-                bytesInBuffer = bufferSize;
                 ret = signingRequest_finalize(request, entityKey, buffer, &bytesInBuffer);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to finalize CSR: %s (%d)", kritis3m_pki_error_message(ret), ret);
@@ -460,7 +487,7 @@ int main(int argc, char** argv)
                 {
                         LOG_INFO("Writing CSR to \"%s\"", paths.csrOutputFilePath);
 
-                        ret = writeFile(paths.csrOutputFilePath, buffer, bytesInBuffer, false);
+                        ret = write_file(paths.csrOutputFilePath, buffer, bytesInBuffer, false);
                         if (ret < 0)
                                 ERROR_OUT("unable to write CSR to \"%s\"", paths.csrOutputFilePath);
                 }
@@ -470,8 +497,7 @@ int main(int argc, char** argv)
                 LOG_INFO("Loading CSR from \"%s\"", paths.issuerKeyPath);
 
                 /* Load the existing CSR */
-                bytesInBuffer = bufferSize;
-                ret = readFile(paths.csrInputPath, buffer, &bytesInBuffer);
+                ret = read_file(paths.csrInputPath, &buffer, &bytesInBuffer);
                 if (ret < 0)
                         ERROR_OUT("unable to read CSR file from \"%s\"", paths.csrInputPath);
         }
@@ -487,6 +513,8 @@ int main(int argc, char** argv)
                 ret = outputCert_initFromCsr(outputCert, buffer, bytesInBuffer);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to parse CSR: %s (%d)", kritis3m_pki_error_message(ret), ret);
+
+                RESET_BUFFER();
 
                 /* Set the issuer data */
                 ret = outputCert_setIssuerData(outputCert, issuerCert, issuerKey);
@@ -521,8 +549,13 @@ int main(int argc, char** argv)
                                           ret);
                 }
 
+                /* Allocate memory */
+                bytesInBuffer = outputBufferSize;
+                buffer = (uint8_t*) malloc(outputBufferSize);
+                if (buffer == NULL)
+                        ERROR_OUT("unable to allocate output buffer");
+
                 /* Finalize the certificate. */
-                bytesInBuffer = bufferSize;
                 ret = outputCert_finalize(outputCert, issuerKey, buffer, &bytesInBuffer);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to finalize new cert: %s (%d)",
@@ -532,9 +565,11 @@ int main(int argc, char** argv)
                 LOG_INFO("Writing certificate to \"%s\"", paths.certOutputFilePath);
 
                 /* Write the new cert to file */
-                ret = writeFile(paths.certOutputFilePath, buffer, bytesInBuffer, false);
+                ret = write_file(paths.certOutputFilePath, buffer, bytesInBuffer, false);
                 if (ret < 0)
                         ERROR_OUT("unable to write output cert to \"%s\"", paths.certOutputFilePath);
+
+                RESET_BUFFER();
         }
 
         ret = KRITIS3M_PKI_SUCCESS;
@@ -554,6 +589,8 @@ exit:
 
         if (buffer != NULL)
                 free(buffer);
+
+        kritis3m_pki_shutdown();
 
         return ret;
 }

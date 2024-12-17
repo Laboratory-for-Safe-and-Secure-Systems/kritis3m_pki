@@ -1360,3 +1360,10 @@ void privateKey_free(PrivateKey* key)
                 free(key);
         }
 }
+
+/* Shutdown and cleanup for the KRITIS3M PKI libraries. */
+void kritis3m_pki_shutdown(void)
+{
+        /* Cleanup WolfSSL */
+        wolfSSL_Cleanup();
+}

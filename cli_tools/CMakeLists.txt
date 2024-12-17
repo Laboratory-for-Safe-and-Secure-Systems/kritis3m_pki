@@ -25,7 +25,6 @@ option(KRITIS3M_PKI_INSTALL_LIBRARIES "Install PKI libraries" OFF)
 
 # Define the main kritis3m_pki executable
 add_executable(kritis3m_pki
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/cli_common.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/kritis3m_pki_cli_parsing.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/kritis3m_pki.c
 )
@@ -49,7 +48,6 @@ endif()
 
 # Define the additional kritis3m_se_importer executable
 add_executable(kritis3m_se_importer
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/cli_common.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/kritis3m_se_importer.c
 )
 target_include_directories(kritis3m_se_importer PUBLIC
