@@ -76,11 +76,19 @@ KRITIS3M_PKI_API int outputCert_setValidity(OutputCert* outputCert, int days);
  */
 KRITIS3M_PKI_API int outputCert_configureAsCA(OutputCert* outputCert);
 
-/* Configure the new OutputCert to be an entity certificate for authentication.
+/* Configure the new OutputCert to be an entity certificate for machine authentication.
+ * This enables the cert to be used for client and server authentication.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-KRITIS3M_PKI_API int outputCert_configureAsEntity(OutputCert* outputCert);
+KRITIS3M_PKI_API int outputCert_configureAsMachineEntity(OutputCert* outputCert);
+
+/* Configure the new OutputCert to be an entity certificate for human authentication.
+ * This enables the cert to be used for client authentication and email signing.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+KRITIS3M_PKI_API int outputCert_configureAsHumanEntity(OutputCert* outputCert);
 
 /* Finalize the new OutputCert by signing it with the issuer private key. Store the final PEM
  * encoded output in the buffer `buffer`. On function entry, `buffer_size` must contain the

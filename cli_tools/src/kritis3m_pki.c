@@ -537,14 +537,25 @@ int main(int argc, char** argv)
                                           kritis3m_pki_error_message(ret),
                                           ret);
                 }
+                else if (metadata.humanCert)
+                {
+                        LOG_INFO("Certificate is a human entity cert");
+
+                        /* Cert is a human entity certificate */
+                        ret = outputCert_configureAsHumanEntity(outputCert);
+                        if (ret != KRITIS3M_PKI_SUCCESS)
+                                ERROR_OUT("unable to configure new cert as human entity: %s (%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
+                }
                 else
                 {
-                        LOG_INFO("Certificate is an entity cert");
+                        LOG_INFO("Certificate is a machine entity cert");
 
-                        /* Cert is an entity certificate */
-                        ret = outputCert_configureAsEntity(outputCert);
+                        /* Cert is a machine entity certificate */
+                        ret = outputCert_configureAsMachineEntity(outputCert);
                         if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to configure new cert as entity: %s (%d)",
+                                ERROR_OUT("unable to configure new cert as machine entity: %s (%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
                 }

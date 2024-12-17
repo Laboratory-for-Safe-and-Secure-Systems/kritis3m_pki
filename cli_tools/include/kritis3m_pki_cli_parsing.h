@@ -43,6 +43,7 @@ typedef struct
 typedef struct
 {
         bool enableCA;
+        bool humanCert;
 
         SigningRequestMetadata certMetadata;
 

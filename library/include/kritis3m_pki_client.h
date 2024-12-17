@@ -14,9 +14,11 @@ typedef struct
         char const* state;
         char const* org;
         char const* unit;
+        char const* email;
         char const* altNamesDNS;
         char const* altNamesURI;
         char const* altNamesIP;
+        char const* altNamesEmail;
 } SigningRequestMetadata;
 
 /* Forward declarations of our data types.

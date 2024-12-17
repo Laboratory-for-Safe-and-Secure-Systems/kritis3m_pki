@@ -431,12 +431,29 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                         decodedCsr.subjectEmailLen);
 
         /* Copy the altNames */
-        if (decodedCsr.altNames)
+        if ((decodedCsr.altNames != NULL) || (decodedCsr.altEmailNames != NULL))
         {
+                DNS_entry* altNames = decodedCsr.altNames;
+
+                if (altNames == NULL)
+                        altNames = decodedCsr.altEmailNames;
+                else if (decodedCsr.altEmailNames != NULL)
+                {
+                        DNS_entry* tmp = altNames;
+
+                        /* Move to the end of the linked list */
+                        while (tmp->next != NULL)
+                                tmp = tmp->next;
+
+                        /* Append the email alt names */
+                        tmp->next = decodedCsr.altEmailNames;
+                        decodedCsr.altEmailNames = NULL;
+                }
+
                 /* Copy the altNames from the CSR to the new certificate. This uses WolfSSL internal API */
                 ret = FlattenAltNames(outputCert->cert.altNames,
                                       sizeof(outputCert->cert.altNames),
-                                      decodedCsr.altNames);
+                                      altNames);
                 if (ret >= 0)
                 {
                         outputCert->cert.altNamesSz = ret;
@@ -707,8 +724,8 @@ int outputCert_configureAsCA(OutputCert* outputCert)
         return KRITIS3M_PKI_SUCCESS;
 }
 
-/* Configure the new OutputCert to be an entity certificate for authentication. */
-int outputCert_configureAsEntity(OutputCert* outputCert)
+/* Configure the new OutputCert to be an entity certificate for machine authentication. */
+int outputCert_configureAsMachineEntity(OutputCert* outputCert)
 {
         if (outputCert == NULL)
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
@@ -721,6 +738,26 @@ int outputCert_configureAsEntity(OutputCert* outputCert)
                 return KRITIS3M_PKI_CERT_ERROR;
 
         ret = wc_SetExtKeyUsage(&outputCert->cert, "serverAuth,clientAuth");
+        if (ret != 0)
+                return KRITIS3M_PKI_CERT_ERROR;
+
+        return KRITIS3M_PKI_SUCCESS;
+}
+
+/* Configure the new OutputCert to be an entity certificate for human authentication. */
+int outputCert_configureAsHumanEntity(OutputCert* outputCert)
+{
+        if (outputCert == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        outputCert->cert.isCA = 0;
+
+        /* Limit key usage to only sign messages in TLS handshake */
+        int ret = wc_SetKeyUsage(&outputCert->cert, "digitalSignature,nonRepudiation,");
+        if (ret != 0)
+                return KRITIS3M_PKI_CERT_ERROR;
+
+        ret = wc_SetExtKeyUsage(&outputCert->cert, "clientAuth,emailProtection");
         if (ret != 0)
                 return KRITIS3M_PKI_CERT_ERROR;
 

@@ -2,9 +2,9 @@
 #include "kritis3m_pki_priv.h"
 
 #if defined(_WIN32)
-        #include <winsock2.h>
+#include <winsock2.h>
 #else
-        #include <arpa/inet.h>
+#include <arpa/inet.h>
 #endif
 
 #define SUBJECT_COUNTRY "DE"
@@ -84,12 +84,12 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
         case ML_DSA_LEVEL5k:
                 type = PKCS11_KEY_TYPE_DILITHIUM;
                 break;
-        #ifdef HAVE_FALCON
+#ifdef HAVE_FALCON
         case FALCON_LEVEL1k:
         case FALCON_LEVEL5k:
                 type = PKCS11_KEY_TYPE_FALCON;
                 break;
-        #endif
+#endif
         default:
                 ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported primary key type");
         }
@@ -99,7 +99,7 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "Failed to import primary key: %d", ret);
 
-        #ifdef WOLFSSL_DUAL_ALG_CERTS
+#ifdef WOLFSSL_DUAL_ALG_CERTS
         /* Import the alternative key */
         if (key->alternativeKey.init == true)
         {
@@ -118,12 +118,12 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
                 case ML_DSA_LEVEL5k:
                         type = PKCS11_KEY_TYPE_DILITHIUM;
                         break;
-                #ifdef HAVE_FALCON
+#ifdef HAVE_FALCON
                 case FALCON_LEVEL1k:
                 case FALCON_LEVEL5k:
                         type = PKCS11_KEY_TYPE_FALCON;
                         break;
-                #endif
+#endif
                 default:
                         ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED, "Unsupported alternative key type");
                 }
@@ -133,7 +133,7 @@ int kritis3m_pki_entity_token_import_key(PrivateKey* key)
                 if (ret != 0)
                         ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "Failed to import alternative key: %d", ret);
         }
-        #endif
+#endif
 
 cleanup:
         return ret;
@@ -258,6 +258,9 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
         if (metadata->state != NULL)
                 strncpy(request->req.subject.state, metadata->state, CTC_NAME_SIZE);
 
+        if (metadata->email != NULL)
+                strncpy(request->req.subject.email, metadata->email, CTC_NAME_SIZE);
+
         /* Allocate DNS alt name objects */
         if (metadata->altNamesDNS != NULL)
         {
@@ -305,6 +308,20 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
                                               ASN_IP_TYPE);
                         if (ret < 0)
                                 ERROR_OUT(ret, "Failed to add IP alt name entry");
+
+                        altName = strtok(NULL, ";");
+                }
+        }
+
+        /* Allocate Email alt name objects */
+        if (metadata->altNamesEmail != NULL)
+        {
+                char* altName = strtok((char*) metadata->altNamesEmail, ";");
+                while (altName != NULL)
+                {
+                        ret = addAltNameEntry(&altNames, altName, strlen(altName), ASN_RFC822_TYPE);
+                        if (ret < 0)
+                                ERROR_OUT(ret, "Failed to add Email alt name entry");
 
                         altName = strtok(NULL, ";");
                 }
@@ -378,10 +395,10 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         ret = wc_EccPublicKeyToDer(&key->key.ecc, request->altPubKeyDer, (word32) ret, 1);
                 }
                 else if (
-        #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
                         (key->type == DILITHIUM_LEVEL2k) || (key->type == DILITHIUM_LEVEL3k) ||
                         (key->type == DILITHIUM_LEVEL5k) ||
-        #endif
+#endif
                         (key->type == ML_DSA_LEVEL2k) || (key->type == ML_DSA_LEVEL3k) ||
                         (key->type == ML_DSA_LEVEL5k))
                 {
@@ -404,7 +421,7 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                                                           (word32) ret,
                                                           1);
                 }
-        #ifdef HAVE_FALCON
+#ifdef HAVE_FALCON
                 else if ((key->type == FALCON_LEVEL1k) || (key->type == FALCON_LEVEL5k))
                 {
                         /* Get output size */
@@ -426,7 +443,7 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                                                        (word32) ret,
                                                        1);
                 }
-        #endif
+#endif
                 else if (key->type == ED25519k)
                 {
                         /* Get output size */

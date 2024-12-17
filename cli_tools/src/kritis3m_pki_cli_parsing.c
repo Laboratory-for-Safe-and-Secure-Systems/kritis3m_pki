@@ -40,6 +40,9 @@ static const struct option cli_options[] = {
         {"self_signed_cert", no_argument, 0, 0x1B},
         {"country", required_argument, 0, 0x1C},
         {"state", required_argument, 0, 0x1D},
+        {"email", required_argument, 0, 0x1E},
+        {"alt_names_email", required_argument, 0, 0x1F},
+        {"human_cert", no_argument, 0, 0x20},
         {"verbose", no_argument, 0, 'v'},
         {"debug", no_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
@@ -180,6 +183,15 @@ int parse_cli_arguments(application_config* app_config,
                 case 0x1D: /* state */
                         metadata->certMetadata.state = optarg;
                         break;
+                case 0x1E: /* email */
+                        metadata->certMetadata.email = optarg;
+                        break;
+                case 0x1F: /* alt_names_email */
+                        metadata->certMetadata.altNamesEmail = optarg;
+                        break;
+                case 0x20: /* human_cert */
+                        metadata->humanCert = true;
+                        break;
                 case 'v':
                         app_config->log_level = LOG_LVL_INFO;
                         LOG_LVL_SET(LOG_LVL_INFO);
@@ -230,14 +242,17 @@ static void set_defaults(application_config* app_config,
 
         /* Metadata */
         metadata->enableCA = false;
+        metadata->humanCert = false;
         metadata->certMetadata.commonName = NULL;
         metadata->certMetadata.country = NULL;
         metadata->certMetadata.state = NULL;
         metadata->certMetadata.org = NULL;
         metadata->certMetadata.unit = NULL;
+        metadata->certMetadata.email = NULL;
         metadata->certMetadata.altNamesDNS = NULL;
         metadata->certMetadata.altNamesURI = NULL;
         metadata->certMetadata.altNamesIP = NULL;
+        metadata->certMetadata.altNamesEmail = NULL;
         metadata->validity = 365;
 
         /* PKCS#11 */
@@ -256,19 +271,17 @@ static void set_defaults(application_config* app_config,
 
 static void print_help(char const* name)
 {
+        /* clang-format off */
         printf("Usage: %s [OPTIONS]\n", name);
         printf("\nKey input:\n");
-        printf("  --issuer_key <file>           Path to the primary issuer key in PEM format\n");
-        printf("  --issuer_alt_key <file>       Path to the alternative issuer key in PEM format "
-               "(generate hybrid cert)\n");
-        printf("  --entity_key <file>           Path to the primary entity key in PEM format (same "
-               "as issuerKey for self-signed cert)\n");
-        printf("  --entity_alt_key <file>       Path to the alternative entity key in PEM format "
-               "(same as issuerAltKey for self-signed cert)\n");
+        printf("  --issuer_key <file>         Path to the primary issuer key (PEM)\n");
+        printf("  --issuer_alt_key <file>     Path to the alternative issuer key (PEM; generate hybrid cert)\n");
+        printf("  --entity_key <file>         Path to the primary entity key (PEM; same as issuerKey for self-signed cert)\n");
+        printf("  --entity_alt_key <file>     Path to the alternative entity key (PEM; same as issuerAltKey for self-signed cert)\n");
 
         printf("\nCertificate/CSR input:\n");
-        printf("  --issuer_cert <file>          Path to the issuer certificate in PEM format\n");
-        printf("  --csr_in <file>               Path to a CSR in PEM format\n");
+        printf("  --issuer_cert <file>        Path to the issuer certificate (PEM)\n");
+        printf("  --csr_in <file>             Path to a CSR (PEM)\n");
 
         printf("\nKey generation:\n");
         printf("  Currently supported algorithms: rsa2048, rsa3072, rsa4096\n");
@@ -276,60 +289,47 @@ static void print_help(char const* name)
         printf("                                  ed25519, ed448\n");
         printf("                                  mldsa44, mldsa65, mldsa87\n");
         printf("                                  dilithium2, dilithium3, dilithium5\n");
-        printf("  --gen_key <alogrithm>         Algorithm for key generation (see list above)\n");
-        printf("  --gen_alt_key <alogrithm>     Algorithm for alternative key generation (see list "
-               "above)\n");
+        printf("  --gen_key <alogrithm>       Algorithm for key generation (see list above)\n");
+        printf("  --gen_alt_key <alogrithm>   Algorithm for alternative key generation (see list above)\n");
 
         printf("\nOutput:\n");
-        printf("  --cert_out <file>             Path to the root certificate output file (PEM)\n");
-        printf("  --csr_out <file>              Path to the CSR output file (PEM)\n");
-        printf("  --key_out <file>              Path to the primary key output file (PEM)\n");
-        printf("  --alt_key_out <file>          Path to the alternative key output file (PEM)\n");
+        printf("  --cert_out <file>           Path to the root certificate output file (PEM)\n");
+        printf("  --csr_out <file>            Path to the CSR output file (PEM)\n");
+        printf("  --key_out <file>            Path to the primary key output file (PEM)\n");
+        printf("  --alt_key_out <file>        Path to the alternative key output file (PEM)\n");
 
         printf("\nMetadata:\n");
-        printf("  --common_name <string>        Common Name (CN) for the certificate/CSR\n");
-        printf("  --country <string>            Country (C) for the certificate/CSR\n");
-        printf("  --state <string>              State (ST) for the certificate/CSR\n");
-        printf("  --org <string>                Organization (O) for the certificate/CSR\n");
-        printf("  --unit <string>               Organizational Unit (OU) for the "
-               "certificate/CSR\n");
-        printf("  --alt_names_DNS <string>      SAN DNS entries for the certificate/CSR (separated "
-               "by ; and wrappend in \")\n");
-        printf("  --alt_names_URI <string>      SAN URI entries for the certificate/CSR (separated "
-               "by ; and wrappend in \")\n");
-        printf("  --alt_names_IP <string>       SAN IP address entries for the certificate/CSR "
-               "(separated by ; and wrappend in \")\n");
-        printf("  --validity <days>             Validity period in days (default: 365)\n");
-        printf("  --CA_cert                     Create a cert that can sign new certs (deafault is "
-               "entity cert/CSR)\n");
-        printf("  --self_signed_cert            Create a self-signed certificate (default: "
-               "false)\n");
+        printf("  --common_name <string>      Common Name (CN) for the certificate/CSR\n");
+        printf("  --country <string>          Country (C) for the certificate/CSR\n");
+        printf("  --state <string>            State (ST) for the certificate/CSR\n");
+        printf("  --org <string>              Organization (O) for the certificate/CSR\n");
+        printf("  --unit <string>             Organizational Unit (OU) for the certificate/CSR\n");
+        printf("  --email <string>            Email address for the user certificate/CSR\n");
+        printf("  --alt_names_DNS <string>    SAN DNS entries for the certificate/CSR (separated by ; and wrappend in \")\n");
+        printf("  --alt_names_URI <string>    SAN URI entries for the certificate/CSR (separated by ; and wrappend in \")\n");
+        printf("  --alt_names_IP <string>     SAN IP entries for the certificate/CSR (separated by ; and wrappend in \")\n");
+        printf("  --alt_names_email <string>  SAN Email entries for the certificate/CSR (separated by ; and wrappend in \")\n");
+        printf("  --validity <days>           Validity period in days (default: 365)\n");
+        printf("  --CA_cert                   Create a cert that can sign new certs (deafault is entity cert/CSR)\n");
+        printf("  --self_signed_cert          Create a self-signed certificate (default: false)\n");
+        printf("  --human_cert                Certificate identifies a human person instead of a machine (default: off)\n");
 
         printf("\nSecure Element:\n");
-        printf("  When using a secure element for key storage, you have to supply the PKCS#11 key "
-               "labels using the arguments\n");
-        printf("  \"--issuerKey\", \"--issuerAltKey\", \"--entityKey\" and \"--entityAltKey\" "
-               "prepending the string\n");
+        printf("  When using a secure element for key storage, you have to supply the PKCS#11 key labels using the arguments\n");
+        printf("  \"--issuerKey\", \"--issuerAltKey\", \"--entityKey\" and \"--entityAltKey\" prepending the string\n");
         printf("  \"%s\" followed by the key label.\n", PKCS11_LABEL_IDENTIFIER);
-        printf("  You can specify different PKCS#11 modules for the issuer and entity keys. For "
-               "each, an individual slot\n");
-        printf("  number and User PIN can be specified. If no slot is given, the first available "
-               "slot is used.\n");
-        printf("  --p11_issuer_module <path>    Path to the PKCS#11 module containing the issuer "
-               "key\r\n");
-        printf("  --p11_issuer_slot <id>        Slot id of the PKCS#11 module for the issuer "
-               "key\r\n");
-        printf("  --p11_issuer_pin <pin>        PIN for the PKCS#11 module containing the issuer "
-               "key\r\n");
-        printf("  --p11_entity_module <path>    Path to the PKCS#11 module containing the entity "
-               "key\r\n");
-        printf("  --p11_entity_slot <id>        Slot id of the PKCS#11 module for the entity "
-               "key\r\n");
-        printf("  --p11_entity_pin <pin>        PIN for the PKCS#11 module containing the entity "
-               "key\r\n");
+        printf("  You can specify different PKCS#11 modules for the issuer and entity keys. For each, an individual slot\n");
+        printf("  number and User PIN can be specified. If no slot is given, the first available slot is used.\n");
+        printf("  --p11_issuer_module <path>  Path to the PKCS#11 module containing the issuer key\r\n");
+        printf("  --p11_issuer_slot <id>      Slot id of the PKCS#11 module for the issuer key\r\n");
+        printf("  --p11_issuer_pin <pin>      PIN for the PKCS#11 module containing the issuer key\r\n");
+        printf("  --p11_entity_module <path>  Path to the PKCS#11 module containing the entity key\r\n");
+        printf("  --p11_entity_slot <id>      Slot id of the PKCS#11 module for the entity key\r\n");
+        printf("  --p11_entity_pin <pin>      PIN for the PKCS#11 module containing the entity key\r\n");
 
         printf("\nGeneral:\n");
-        printf("  --verbose                     Enable verbose output\n");
-        printf("  --debug                       Enable debug output\n");
-        printf("  --help                        Print this help\n");
+        printf("  --verbose                   Enable verbose output\n");
+        printf("  --debug                     Enable debug output\n");
+        printf("  --help                      Print this help\n");
+        /* clang-format on */
 }
