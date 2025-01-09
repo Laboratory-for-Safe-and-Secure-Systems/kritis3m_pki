@@ -238,6 +238,8 @@ int signingRequest_init(SigningRequest* request, SigningRequestMetadata const* m
                           "Failed to initialize certificate request structure: %d",
                           ret);
 
+        request->req.version = 0; /* Version 1 is hex 0. This is the default for CSRs */
+
         /* Set metadata */
         if (metadata->commonName != NULL)
                 strncpy(request->req.subject.commonName, metadata->commonName, CTC_NAME_SIZE);

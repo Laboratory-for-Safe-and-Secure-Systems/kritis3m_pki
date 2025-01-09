@@ -276,8 +276,8 @@ static void print_help(char const* name)
         printf("\nKey input:\n");
         printf("  --issuer_key <file>         Path to the primary issuer key (PEM)\n");
         printf("  --issuer_alt_key <file>     Path to the alternative issuer key (PEM; generate hybrid cert)\n");
-        printf("  --entity_key <file>         Path to the primary entity key (PEM; same as issuerKey for self-signed cert)\n");
-        printf("  --entity_alt_key <file>     Path to the alternative entity key (PEM; same as issuerAltKey for self-signed cert)\n");
+        printf("  --entity_key <file>         Path to the primary entity key (PEM; same as issuer_key for self-signed cert)\n");
+        printf("  --entity_alt_key <file>     Path to the alternative entity key (PEM; same as issuer_alt_key for self-signed cert)\n");
 
         printf("\nCertificate/CSR input:\n");
         printf("  --issuer_cert <file>        Path to the issuer certificate (PEM)\n");

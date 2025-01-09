@@ -462,17 +462,17 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
         /* Check if public key and private key belong together. */
         if (type == RSAk)
         {
-                // if (key->external.label != NULL)
-                //         ret = wc_CryptoCb_RsaCheckPrivKey(&key->key.rsa, pubKey, pubKeySize);
-                // else
-                ret = wc_CheckRsaKey(&key->key.rsa);
+                if (key->external.label != NULL)
+                        ret = wc_CryptoCb_RsaCheckPrivKey(&key->key.rsa, pubKey, pubKeySize);
+                else
+                        ret = wc_CheckRsaKey(&key->key.rsa);
         }
         else if (type == ECDSAk)
         {
-                // if (key->external.label != NULL)
-                //         ret = wc_CryptoCb_EccCheckPrivKey(&key->key.ecc, pubKey, pubKeySize);
-                // else
-                ret = wc_ecc_check_key(&key->key.ecc);
+                if (key->external.label != NULL)
+                        ret = wc_CryptoCb_EccCheckPrivKey(&key->key.ecc, pubKey, pubKeySize);
+                else
+                        ret = wc_ecc_check_key(&key->key.ecc);
         }
         else if (
 #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
@@ -481,11 +481,13 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
 #endif
                 (type == ML_DSA_LEVEL2k) || (type == ML_DSA_LEVEL3k) || (type == ML_DSA_LEVEL5k))
         {
-                // if (key->external.label != NULL)
-                //         ret = wc_CryptoCb_PqcSignatureCheckPrivKey(&key->key.dilithium,
-                //                         WC_PQC_SIG_TYPE_DILITHIUM, pubKey, pubKeySize);
-                // else
-                ret = wc_dilithium_check_key(&key->key.dilithium);
+                if (key->external.label != NULL)
+                        ret = wc_CryptoCb_PqcSignatureCheckPrivKey(&key->key.dilithium,
+                                                                   WC_PQC_SIG_TYPE_DILITHIUM,
+                                                                   pubKey,
+                                                                   pubKeySize);
+                else
+                        ret = wc_dilithium_check_key(&key->key.dilithium);
         }
 #ifdef HAVE_FALCON
         else if ((type == FALCON_LEVEL1k) || (type == FALCON_LEVEL5k))
@@ -500,17 +502,13 @@ int importPublicKey(SinglePrivateKey* key, uint8_t const* pubKey, size_t pubKeyS
 #endif
         else if (type == ED25519k)
         {
-                // if (key->external.label != NULL)
-                /* Not supported currently... */
-                // else
-                ret = wc_ed25519_check_key(&key->key.ed25519);
+                if (key->external.label == NULL)
+                        ret = wc_ed25519_check_key(&key->key.ed25519);
         }
         else if (type == ED448k)
         {
-                // if (key->external.label != NULL)
-                /* Not supported currently... */
-                // else
-                ret = wc_ed448_check_key(&key->key.ed448);
+                if (key->external.label == NULL)
+                        ret = wc_ed448_check_key(&key->key.ed448);
         }
 
         if (ret != 0)

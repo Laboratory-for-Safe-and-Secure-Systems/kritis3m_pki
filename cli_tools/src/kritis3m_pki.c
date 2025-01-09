@@ -94,12 +94,31 @@ int main(int argc, char** argv)
 
         if (paths.entityKeyPath != NULL)
         {
-                /* Check if an external private key should be used */
+                /* Check if we have to read a file */
                 if (strncmp(paths.entityKeyPath, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) ==
                     0)
                 {
+                        /* Duplicate string */
+                        buffer = (uint8_t*) duplicate_string(paths.entityKeyPath);
+                        if (buffer == NULL)
+                                ERROR_OUT("unable to duplicate PKCS#11 label");
+                }
+                else
+                {
+                        LOG_INFO("Loading entity key from \"%s\"", paths.entityKeyPath);
+
+                        /* Read file */
+                        ret = read_file(paths.entityKeyPath, &buffer, &bytesInBuffer);
+                        if (ret < 0)
+                                ERROR_OUT("unable to read entity key file from \"%s\"",
+                                          paths.entityKeyPath);
+                }
+
+                /* Check if an external private key should be used */
+                if (strncmp((char*) buffer, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) == 0)
+                {
                         LOG_INFO("Referencing external entity key with label \"%s\"",
-                                 paths.entityKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
+                                 (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
 
                         /* Initialize the related PKCS#11 token */
                         pkcs11.entityModule
@@ -116,8 +135,7 @@ int main(int argc, char** argv)
                         /* Set the external reference */
                         ret = privateKey_setExternalRef(entityKey,
                                                         pkcs11.entityModule.deviceId,
-                                                        paths.entityKeyPath +
-                                                                PKCS11_LABEL_IDENTIFIER_LEN);
+                                                        (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to set external reference for entity key: %s "
                                           "(%d)",
@@ -126,34 +144,48 @@ int main(int argc, char** argv)
                 }
                 else
                 {
-                        LOG_INFO("Loading entity key from \"%s\"", paths.entityKeyPath);
-
-                        /* Read file */
-                        ret = read_file(paths.entityKeyPath, &buffer, &bytesInBuffer);
-                        if (ret < 0)
-                                ERROR_OUT("unable to read entity key file from \"%s\"",
-                                          paths.entityKeyPath);
-
                         /* Load key */
                         ret = privateKey_loadKeyFromBuffer(entityKey, buffer, bytesInBuffer);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to parse entity key: %s (%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
-
-                        RESET_BUFFER();
                 }
+
+                RESET_BUFFER();
 
                 /* Load an alternative entity key */
                 if (paths.entityAltKeyPath != NULL)
                 {
-                        /* Check if an external alternative private key should be used */
+                        /* Check if we have to read a file */
                         if (strncmp(paths.entityAltKeyPath,
                                     PKCS11_LABEL_IDENTIFIER,
                                     PKCS11_LABEL_IDENTIFIER_LEN) == 0)
                         {
+                                /* Duplicate string */
+                                buffer = (uint8_t*) duplicate_string(paths.entityAltKeyPath);
+                                if (buffer == NULL)
+                                        ERROR_OUT("unable to duplicate PKCS#11 label");
+                        }
+                        else
+                        {
+                                LOG_INFO("Loading entity alternative key from \"%s\"",
+                                         paths.entityAltKeyPath);
+
+                                /* Read file */
+                                ret = read_file(paths.entityAltKeyPath, &buffer, &bytesInBuffer);
+                                if (ret < 0)
+                                        ERROR_OUT("unable to read entity alt key file from \"%s\"",
+                                                  paths.entityAltKeyPath);
+                        }
+
+                        /* Check if an external alternative private key should be used */
+                        if (strncmp((char*) buffer,
+                                    PKCS11_LABEL_IDENTIFIER,
+                                    PKCS11_LABEL_IDENTIFIER_LEN) == 0)
+                        {
                                 LOG_INFO("Referencing external entity alt key with label \"%s\"",
-                                         paths.entityAltKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
+                                         (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
 
                                 /* Check if the token is not yet initialized */
                                 if (pkcs11.entityModule.deviceId < 0)
@@ -180,7 +212,7 @@ int main(int argc, char** argv)
                                 /* Set the external reference */
                                 ret = privateKey_setAltExternalRef(entityKey,
                                                                    pkcs11.entityModule.deviceId,
-                                                                   paths.entityKeyPath +
+                                                                   (char*) buffer +
                                                                            PKCS11_LABEL_IDENTIFIER_LEN);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
                                         ERROR_OUT("unable to set external reference for entity alt "
@@ -190,24 +222,15 @@ int main(int argc, char** argv)
                         }
                         else
                         {
-                                LOG_INFO("Loading entity alternative key from \"%s\"",
-                                         paths.entityAltKeyPath);
-
-                                /* Read file */
-                                ret = read_file(paths.entityAltKeyPath, &buffer, &bytesInBuffer);
-                                if (ret < 0)
-                                        ERROR_OUT("unable to read entity alt key file from \"%s\"",
-                                                  paths.entityAltKeyPath);
-
                                 /* Load key */
                                 ret = privateKey_loadAltKeyFromBuffer(entityKey, buffer, bytesInBuffer);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
                                         ERROR_OUT("unable to parse entity alt key: %s (%d)",
                                                   kritis3m_pki_error_message(ret),
                                                   ret);
-
-                                RESET_BUFFER();
                         }
+
+                        RESET_BUFFER();
                 }
         }
 
@@ -306,12 +329,31 @@ int main(int argc, char** argv)
 
         if (paths.issuerKeyPath != NULL)
         {
-                /* Check if an external private key should be used */
+                /* Check if we have to read a file */
                 if (strncmp(paths.issuerKeyPath, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) ==
                     0)
                 {
+                        /* Duplicate string */
+                        buffer = (uint8_t*) duplicate_string(paths.issuerKeyPath);
+                        if (buffer == NULL)
+                                ERROR_OUT("unable to duplicate PKCS#11 label");
+                }
+                else
+                {
+                        LOG_INFO("Loading issuer key from \"%s\"", paths.issuerKeyPath);
+
+                        /* Read file */
+                        ret = read_file(paths.issuerKeyPath, &buffer, &bytesInBuffer);
+                        if (ret < 0)
+                                ERROR_OUT("unable to read issuer key file from \"%s\"",
+                                          paths.issuerKeyPath);
+                }
+
+                /* Check if an external private key should be used */
+                if (strncmp((char*) buffer, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) == 0)
+                {
                         LOG_INFO("Referencing external issuer key with label \"%s\"",
-                                 paths.issuerKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
+                                 (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
 
                         /* Initialize the related PKCS#11 token */
                         pkcs11.issuerModule
@@ -328,8 +370,7 @@ int main(int argc, char** argv)
                         /* Set the external reference */
                         ret = privateKey_setExternalRef(issuerKey,
                                                         pkcs11.issuerModule.deviceId,
-                                                        paths.issuerKeyPath +
-                                                                PKCS11_LABEL_IDENTIFIER_LEN);
+                                                        (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to set external reference for issuer key: %s "
                                           "(%d)",
@@ -338,34 +379,48 @@ int main(int argc, char** argv)
                 }
                 else
                 {
-                        LOG_INFO("Loading issuer key from \"%s\"", paths.issuerKeyPath);
-
-                        /* Read file */
-                        ret = read_file(paths.issuerKeyPath, &buffer, &bytesInBuffer);
-                        if (ret < 0)
-                                ERROR_OUT("unable to read issuer key file from \"%s\"",
-                                          paths.issuerKeyPath);
-
                         /* Load key */
                         ret = privateKey_loadKeyFromBuffer(issuerKey, buffer, bytesInBuffer);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to parse issuer key: %s (%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
-
-                        RESET_BUFFER();
                 }
+
+                RESET_BUFFER();
 
                 /* Load an alternative issuer key */
                 if (paths.issuerAltKeyPath != NULL)
                 {
-                        /* Check if an external alternative private key should be used */
+                        /* Check if we have to read a file */
                         if (strncmp(paths.issuerAltKeyPath,
                                     PKCS11_LABEL_IDENTIFIER,
                                     PKCS11_LABEL_IDENTIFIER_LEN) == 0)
                         {
+                                /* Duplicate string */
+                                buffer = (uint8_t*) duplicate_string(paths.issuerAltKeyPath);
+                                if (buffer == NULL)
+                                        ERROR_OUT("unable to duplicate PKCS#11 label");
+                        }
+                        else
+                        {
+                                LOG_INFO("Loading alternative issuer key from \"%s\"",
+                                         paths.issuerAltKeyPath);
+
+                                /* Read file */
+                                ret = read_file(paths.issuerAltKeyPath, &buffer, &bytesInBuffer);
+                                if (ret < 0)
+                                        ERROR_OUT("unable to read issuer alt key file from \"%s\"",
+                                                  paths.issuerAltKeyPath);
+                        }
+
+                        /* Check if an external alternative private key should be used */
+                        if (strncmp((char*) buffer,
+                                    PKCS11_LABEL_IDENTIFIER,
+                                    PKCS11_LABEL_IDENTIFIER_LEN) == 0)
+                        {
                                 LOG_INFO("Referencing external issuer alt key with label \"%s\"",
-                                         paths.issuerAltKeyPath + PKCS11_LABEL_IDENTIFIER_LEN);
+                                         (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
 
                                 /* Check if the token is not yet initialized */
                                 if (pkcs11.issuerModule.deviceId < 0)
@@ -392,7 +447,7 @@ int main(int argc, char** argv)
                                 /* Set the external reference */
                                 ret = privateKey_setAltExternalRef(issuerKey,
                                                                    pkcs11.issuerModule.deviceId,
-                                                                   paths.issuerAltKeyPath +
+                                                                   (char*) buffer +
                                                                            PKCS11_LABEL_IDENTIFIER_LEN);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
                                         ERROR_OUT("unable to set external reference for issuer alt "
@@ -402,24 +457,15 @@ int main(int argc, char** argv)
                         }
                         else
                         {
-                                LOG_INFO("Loading alternative issuer key from \"%s\"",
-                                         paths.issuerAltKeyPath);
-
-                                /* Read file */
-                                ret = read_file(paths.issuerAltKeyPath, &buffer, &bytesInBuffer);
-                                if (ret < 0)
-                                        ERROR_OUT("unable to read issuer alt key file from \"%s\"",
-                                                  paths.issuerAltKeyPath);
-
                                 /* Load key */
                                 ret = privateKey_loadAltKeyFromBuffer(issuerKey, buffer, bytesInBuffer);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
                                         ERROR_OUT("unable to parse issuer alt key: %s (%d)",
                                                   kritis3m_pki_error_message(ret),
                                                   ret);
-
-                                RESET_BUFFER();
                         }
+
+                        RESET_BUFFER();
                 }
         }
         else if (gen_info.selfSignCert)
@@ -459,7 +505,8 @@ int main(int argc, char** argv)
         }
 
         /* Check if we have to generate a new CSR of if the user provided one */
-        if (paths.csrInputPath == NULL)
+        if ((paths.csrInputPath == NULL) &&
+            ((paths.certOutputFilePath != NULL) || (paths.csrOutputFilePath != NULL)))
         {
                 LOG_INFO("Generating a new CSR");
 
@@ -492,9 +539,9 @@ int main(int argc, char** argv)
                                 ERROR_OUT("unable to write CSR to \"%s\"", paths.csrOutputFilePath);
                 }
         }
-        else
+        else if (paths.csrInputPath != NULL)
         {
-                LOG_INFO("Loading CSR from \"%s\"", paths.issuerKeyPath);
+                LOG_INFO("Loading CSR from \"%s\"", paths.csrInputPath);
 
                 /* Load the existing CSR */
                 ret = read_file(paths.csrInputPath, &buffer, &bytesInBuffer);
