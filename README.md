@@ -2,9 +2,9 @@
 
 This repository contains the code for the Public Key Infrastructure (PKI) for the KRITIS³M research project.
 
-**Disclaimer:** It is highly recommended to consume this repository indirectly via the [KRITIS³M Workspace repository](https://github.com/Laboratory-for-Safe-and-Secure-Systems/kritis3m_workspace).
+**Disclaimer:** It is recommended to consume this repository indirectly via the [KRITIS³M Workspace repository](https://github.com/Laboratory-for-Safe-and-Secure-Systems/kritis3m_workspace).
 
-The code is split into two C libraries containing the actual PKI functionality and into CLI tooling for direct usage from the command line. The libraries can also be used from within other projects, for example the [KRITIS³M EST code](https://github.com/Laboratory-for-Safe-and-Secure-Systems/est).
+The code is split into three C libraries containing the actual PKI functionality and into CLI tooling for direct usage from the command line. The libraries can also be used from within other projects, for example the [KRITIS³M EST code](https://github.com/Laboratory-for-Safe-and-Secure-Systems/est).
 
 ## Building
 
@@ -19,7 +19,7 @@ sudo make install
 
 You can also use Ninja as a build tool by specifying `-GNinja` within the CMake invocation.
 
-The libraries and CLI tools have a few dependencies listed below. By default, those are cloned using CMake the FetchContent functionality. However, you can also specify their source directory via CMake variables (given below for each dependency) to prevent additional downloads.
+The libraries and CLI tools have a few dependencies listed below. By default, those are cloned using the CMake FetchContent functionality. However, you can also specify their source directory via CMake variables (given below for each dependency) to prevent additional downloads.
 
 * [kritis3m_applications](https://github.com/Laboratory-for-Safe-and-Secure-Systems/kritis3m_applications): common code for CLI applications (`-DFETCHCONTENT_SOURCE_DIR_KRITIS3M_APPLICATIONS=/path/to/kritis3m_applications`).
 * [kritis3m_wolfssl](https://github.com/Laboratory-for-Safe-and-Secure-Systems/kritis3m_wolfssl): Wrapper repository for the WolfSSL fork and the liboqs library with the specific configuration of both libraries (`-DFETCHCONTENT_SOURCE_DIR_KRITIS3M_WOLFSSL=/path/to/kritis3m_wolfssl`).
