@@ -81,6 +81,33 @@ All input files containing private keys/certificates/CSRs have to be encoded in 
 
 The tool also supports the generation of hybrid certificates containing both classical and PQC key material (public keys and CA signatures). For more information on that topic, please see [here](ToDo). You can handle the alternative private keys with the related CLI arguments.
 
+#### Metadata of certificates
+
+The following metadata of certificates and CSRs can be manually set by the user via CLI arguments:
+* Common Name (CN)
+* Country (C)
+* State (ST)
+* Organisation (O)
+* Unit (OU)
+* E-Mail address
+* Subject Alternative Names (SAN Extension)
+    * DNS
+    * URI
+    * IP Address
+    * E-Mail
+* Validity: `Not Before` date is set to exactly one day before the current timestamp, `Not After` is set accordingly based on the given amount of days
+
+In addition, the following metadata is set implicitly:
+* Subject Key Identifier (SKID): SHA1 fingerprint of the public key
+* Authority Key Identifier (AKID): SHA1 fingerpint of the issuer's public key
+* Key Usage:
+    * CA certificates (`--CA_cert` flag): Certificate Sign, CRL Sign
+    * Human certificates (`--human_cert` flag): Digital Signature, Non Repudiation
+    * Machine certificates (no flag): Digital Signature
+* Extended Key Usage:
+    * Human certificates (`--human_cert` flag): TLS Web Client Authentication, E-mail Protection
+    * Machine certificates (no flag): TLS Web Server Authentication, TLS Web Client Authentication
+
 #### PKCS#11
 
 In addition, private keys stored on external tokens available via a PKCS#11 library can be used for both the entitiy or the issuer key. Furthermore, new private keys can also be generated directly on the token.
@@ -176,8 +203,88 @@ This assumes that on the PKCS#11 token the private key for the issuer certificat
 
 ## Libraries
 
+The PKI code is split into client and server functionality with a shared common part.
+
+The common part contains general functionality (e.g. logging) and methods to handle private key objects.
+
+The client part contains all functionality necessary to create CSRs with specific metadata.
+
+The server part contains all functionality to issue certificates from CSRs.
+
+During build, three libraries are created reflecting this split, each with an individual header file:
+* libkritis3m_pki_common (must always be linked to when using one of the two below)
+* libkritis3m_pki_server
+* libkritis3m_pki_client
+
+Furthermore, helper files for easier handling of the libraries are also generated and installed during system-wide installation:
+*  CMake export and config files. This enables CMake to find the library using `find_package()` functionality
+* pkg-config files for the equally named tool
+
+When the CMake option `KRITIS3M_PKI_COMBINED_STATIC_LIB` is enabled, two static libraries are created additionally (`libkritis3m_pki_server_full.a`, `libkritis3m_pki_client_full.a`). These two each contain all dependencies for easier integration into custom projects without proper dynamic loader support.
+
 ### Common code
+
+Please refer to the `kritis3m_pki_common.h` header file for detailed documentation of each available functions and structures.
+
+For library initialization/shutdown, to methods are available:
+* `kritis3m_pki_init()`: Initialize internal objects. **Must** be called before using any other PKI functionality.
+* `kritis3m_pki_shutdown()`
+
+Customize logging functionality (by default: logging is disabled, log level is "ERROR" and messages are sent to stdout):
+* `kritis3m_pki_enable_logging()`
+* `kritis3m_pki_set_log_callback()`
+* `kritis3m_pki_set_log_level()`
+* `kritis3m_pki_error_message()`
+
+Handling of private keys:
+* `privateKey_new()`
+* `privateKey_setExternalRef()`
+* `privateKey_setAltExternalRef()`
+* `privateKey_loadKeyFromBuffer()`
+* `privateKey_loadAltKeyFromBuffer()`
+* `privateKey_generateKey()`
+* `privateKey_generateAltKey()`
+* `privateKey_copyKey()`
+* `privateKey_writeKeyToBuffer()`
+* `privateKey_writeAltKeyToBuffer()`
+* `privateKey_free()`
 
 ### Client library
 
+Please refer to the `kritis3m_pki_client.h` header file for detailed documentation of each available functions and structures.
+
+Handling of Certificate Signing Reqeusts:
+* `signingRequest_new()`
+* `signingRequest_init()`
+* `signingRequest_finalize()`
+* `signingRequest_free()`
+
+Manage a PKCS#11 token for the entity private key:
+* `kritis3m_pki_init_entity_token()`
+* `kritis3m_pki_entity_token_import_key()`
+* `kritis3m_pki_close_entity_token()`
+
+
 ### Server library
+
+Please refer to the `kritis3m_pki_server.h` header file for detailed documentation of each available functions and structures.
+
+Handle an issuer certificate:
+* `issuerCert_new()`
+* `issuerCert_initFromBuffer()`
+* `issuerCert_free()`
+
+Handle a new certificate:
+* `outputCert_new()`
+* `outputCert_initFromCsr()`
+* `outputCert_setIssuerData()`
+* `outputCert_setValidity()`
+* `outputCert_configureAsCA()`
+* `outputCert_configureAsMachineEntity()`
+* `outputCert_configureAsHumanEntity()`
+* `outputCert_finalize()`
+* `outputCert_free()`
+
+Manage a PKCS#11 token for the issuer private key:
+* `kritis3m_pki_init_issuer_token()`
+* `kritis3m_pki_close_issuer_token()`
