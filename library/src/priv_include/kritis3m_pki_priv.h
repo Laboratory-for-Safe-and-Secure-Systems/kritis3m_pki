@@ -1,6 +1,7 @@
 #ifndef KRITIS3M_PKI_PRIV_H
 #define KRITIS3M_PKI_PRIV_H
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -29,10 +30,6 @@
                 ret = error_code;                                                                  \
                 goto cleanup;                                                                      \
         }
-
-#define SubjectAltPublicKeyInfoExtension "2.5.29.72"
-#define AltSignatureAlgorithmExtension "2.5.29.73"
-#define AltSignatureValueExtension "2.5.29.74"
 
 #define PKCS11_ENTITY_TOKEN_DEVICE_ID 1
 #define PKCS11_ISSUER_TOKEN_DEVICE_ID 2
