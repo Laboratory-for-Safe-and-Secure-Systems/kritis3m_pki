@@ -476,15 +476,8 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
                 memcpy(outputCert->altPubKeyDer, decodedCsr.sapkiDer, decodedCsr.sapkiLen);
 
                 /* Write the alternative public key as a non-critical extension */
-                ret = wc_SetCustomExtension(&outputCert->cert,
-                                            0,
-                                            SubjectAltPublicKeyInfoExtension,
-                                            outputCert->altPubKeyDer,
-                                            decodedCsr.sapkiLen);
-                if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR,
-                                  "Failed to copy alternative public key from CSR: %d",
-                                  ret);
+                outputCert->cert.sapkiDer = outputCert->altPubKeyDer;
+                outputCert->cert.sapkiLen = decodedCsr.sapkiLen;
         }
 #endif
 
@@ -546,15 +539,8 @@ int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert, Pri
                                   ret);
 
                 /* Write encoded signature algorithm as a non-critical extension */
-                ret = wc_SetCustomExtension(&outputCert->cert,
-                                            0,
-                                            AltSignatureAlgorithmExtension,
-                                            outputCert->altSigAlgDer,
-                                            ret);
-                if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR,
-                                  "Failed to write alternative signature algorithm: %d",
-                                  ret);
+                outputCert->cert.altSigAlgDer = outputCert->altSigAlgDer;
+                outputCert->cert.altSigAlgLen = ret;
         }
 #endif
 
@@ -836,15 +822,8 @@ int outputCert_finalize(OutputCert* outputCert, PrivateKey* issuerKey, uint8_t* 
                                   ret);
 
                 /* Store the alternative signature in the new certificate */
-                ret = wc_SetCustomExtension(&outputCert->cert,
-                                            0,
-                                            AltSignatureValueExtension,
-                                            outputCert->altSigValDer,
-                                            ret);
-                if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CERT_EXT_ERROR,
-                                  "Failed to write alternative signature: %d",
-                                  ret);
+                outputCert->cert.altSigValDer = outputCert->altSigValDer;
+                outputCert->cert.altSigValLen = ret;
 
                 /* Restore the original signature type */
                 outputCert->cert.sigType = sigType;

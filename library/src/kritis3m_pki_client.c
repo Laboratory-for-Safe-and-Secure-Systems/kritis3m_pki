@@ -493,15 +493,8 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                         ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to export public key: %d", ret);
 
                 /* Store public key in CSR */
-                ret = wc_SetCustomExtension(&request->req,
-                                            0,
-                                            SubjectAltPublicKeyInfoExtension,
-                                            request->altPubKeyDer,
-                                            ret);
-                if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_EXT_ERROR,
-                                  "Failed to store alt public key in CSR: %d",
-                                  ret);
+                request->req.sapkiDer = request->altPubKeyDer;
+                request->req.sapkiLen = ret;
 
                 /* Get OID of signature algorithm */
                 request->altSigAlg = getSigAlgForKey(key);
@@ -529,15 +522,8 @@ static int encodeAltKeyData(SigningRequest* request, SinglePrivateKey* key)
                                   ret);
 
                 /* Store signature algorithm in CSR */
-                ret = wc_SetCustomExtension(&request->req,
-                                            0,
-                                            AltSignatureAlgorithmExtension,
-                                            request->altSigAlgDer,
-                                            ret);
-                if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_EXT_ERROR,
-                                  "Failed to store alt signature algorithm in CSR: %d",
-                                  ret);
+                request->req.altSigAlgDer = request->altSigAlgDer;
+                request->req.altSigAlgLen = ret;
         }
 
         ret = KRITIS3M_PKI_SUCCESS;
@@ -558,8 +544,6 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
 {
         int ret = KRITIS3M_PKI_SUCCESS;
         WC_RNG rng;
-        DecodedCert decodedCert;
-        bool decodedCertInit = false;
 
         if (request == NULL || key == NULL || buffer == NULL || buffer_size == NULL)
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
@@ -590,6 +574,11 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
                 if (ret < 0)
                         ERROR_OUT(ret, "Failed to encode alternative key data");
 
+                /* Store the original signature type. We have to set that to zero here in order
+                 * to generate the PreTBS certificate with wc_MakeCert_ex(). */
+                int sigType = request->req.sigType;
+                request->req.sigType = 0;
+
                 /* Generate a temporary CSR to generate the TBS from it */
                 ret = wc_MakeCertReq_ex(&request->req,
                                         derBuffer,
@@ -598,30 +587,6 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
                                         &key->primaryKey.key);
                 if (ret <= 0)
                         ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to generate temporary CSR: %d", ret);
-
-                /* Sign temporary CSR. Only needed so wc_ParseCert() doesn't fail down below. */
-                ret = wc_SignCert_ex(request->req.bodySz,
-                                     request->req.sigType,
-                                     derBuffer,
-                                     LARGE_TEMP_SZ,
-                                     key->primaryKey.certKeyType,
-                                     &key->primaryKey.key,
-                                     &rng);
-                if (ret <= 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_SIGN_ERROR, "Failed to sign temporary CSR: %d", ret);
-
-                derSize = ret;
-
-                /* Extract the TBS data for signing with alternative key */
-                InitDecodedCert(&decodedCert, derBuffer, derSize, 0);
-                ret = ParseCert(&decodedCert, CERTREQ_TYPE, NO_VERIFY, NULL);
-                decodedCertInit = true;
-                if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to decode temporary CSR: %d", ret);
-
-                ret = wc_GeneratePreTBS(&decodedCert, derBuffer, LARGE_TEMP_SZ);
-                if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to generate preTBS: %d", ret);
 
                 derSize = ret;
 
@@ -646,15 +611,10 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
                                   ret);
 
                 /* Store the alternative signature in the new certificate */
-                ret = wc_SetCustomExtension(&request->req,
-                                            0,
-                                            AltSignatureValueExtension,
-                                            request->altSigValDer,
-                                            ret);
-                if (ret < 0)
-                        ERROR_OUT(KRITIS3M_PKI_CSR_EXT_ERROR,
-                                  "Failed to store alt signature value in CSR: %d",
-                                  ret);
+                request->req.altSigValDer = request->altSigValDer;
+                request->req.altSigValLen = ret;
+
+                request->req.sigType = sigType;
         }
 #endif
 
@@ -690,8 +650,6 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
         ret = KRITIS3M_PKI_SUCCESS;
 
 cleanup:
-        if (decodedCertInit == true)
-                FreeDecodedCert(&decodedCert);
         wc_FreeRng(&rng);
         if (derBuffer != NULL)
                 free(derBuffer);
