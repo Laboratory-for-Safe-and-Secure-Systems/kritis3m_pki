@@ -84,30 +84,6 @@ typedef struct
  */
 KRITIS3M_PKI_API int kritis3m_pki_init(kritis3m_pki_configuration const* config);
 
-/* Enable/disable logging infrastructure.
- *
- * Parameter is a boolean value to enable or disable logging.
- *
- * Returns KRITIS3M_PKI_SUCCESS on success, negative error code in case of an error.
- */
-KRITIS3M_PKI_API int kritis3m_pki_enable_logging(bool enable);
-
-/* Set a custom logging callback.
- *
- * Parameter is a function pointer to the logging callback.
- *
- * Returns KRITIS3M_PKI_SUCCESS on success, negative error code in case of an error.
- */
-KRITIS3M_PKI_API int kritis3m_pki_set_log_callback(kritis3m_pki_log_callback new_callback);
-
-/* Update the log level.
- *
- * Parameter is the new log level.
- *
- * Returns KRITIS3M_PKI_SUCCESS on success, negative error code in case of an error.
- */
-KRITIS3M_PKI_API int kritis3m_pki_set_log_level(int32_t new_log_level);
-
 /* Print a human-readable error message for the provided error code. */
 KRITIS3M_PKI_API char const* kritis3m_pki_error_message(int error_code);
 

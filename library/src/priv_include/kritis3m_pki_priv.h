@@ -93,6 +93,7 @@ struct outputCert
 };
 
 /* Internal helper methods */
+int kritis3m_pki_prepare_logging(kritis3m_pki_configuration const* config);
 KRITIS3M_PKI_API void pki_log(int32_t level, char const* message, ...);
 
 KRITIS3M_PKI_API int initPrivateKey(SinglePrivateKey* key, int type);

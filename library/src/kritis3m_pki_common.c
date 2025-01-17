@@ -56,9 +56,7 @@ int kritis3m_pki_init(kritis3m_pki_configuration const* config)
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
 
         /* Configure the logging interface */
-        kritis3m_pki_set_log_callback(config->log_callback);
-        kritis3m_pki_enable_logging(config->logging_enabled);
-        kritis3m_pki_set_log_level(config->log_level);
+        kritis3m_pki_prepare_logging(config);
 
         /* Initialize WolfSSL */
         ret = wolfSSL_Init();
