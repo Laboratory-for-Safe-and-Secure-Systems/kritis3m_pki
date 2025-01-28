@@ -59,139 +59,6 @@ int kritis3m_pki_close_issuer_token(void)
 #endif
 }
 
-/* Create a new IssuerCert object. */
-IssuerCert* issuerCert_new(void)
-{
-        IssuerCert* cert = (IssuerCert*) malloc(sizeof(IssuerCert));
-        if (cert == NULL)
-                return NULL;
-
-        cert->buffer = NULL;
-        cert->size = 0;
-        cert->init = false;
-
-        return cert;
-}
-
-/* Initialize the given IssuerCert `cert` using the PEM encoded data in the provided `buffer`
- * with `buffer_size` bytes. Check if it is compatible with the provided issuer private key.
- *
- * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
- */
-int issuerCert_initFromBuffer(IssuerCert* cert,
-                              uint8_t const* buffer,
-                              size_t buffer_size,
-                              PrivateKey* issuerKey)
-{
-        int ret = KRITIS3M_PKI_SUCCESS;
-        DerBuffer* der = NULL;
-        EncryptedInfo info;
-        DecodedCert decodedCert;
-        bool decodedCertInit = false;
-
-        if (cert == NULL || buffer == NULL)
-                return KRITIS3M_PKI_ARGUMENT_ERROR;
-
-        memset(&info, 0, sizeof(EncryptedInfo));
-
-        /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer object */
-        ret = wc_PemToDer(buffer, buffer_size, CERT_TYPE, &der, NULL, &info, NULL);
-        if (ret != 0)
-                ERROR_OUT(KRITIS3M_PKI_PEM_DECODE_ERROR, "Failed to convert PEM to DER: %d", ret);
-
-        /* Decode the parsed issuer cert */
-        wc_InitDecodedCert(&decodedCert, der->buffer, der->length, NULL);
-        ret = wc_ParseCert(&decodedCert, CERT_TYPE, NO_VERIFY, NULL);
-        decodedCertInit = true;
-        if (ret != 0)
-                ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to parse issuer certificate: %d", ret);
-
-        /* If the issuer key is not yet properly initialized, fill it with data from the issuer
-         * certificate. This is the case when using an external issuer key stored on a secure
-         * element. */
-        if (issuerKey->primaryKey.init == false)
-        {
-                /* Initialize the key */
-                ret = initPrivateKey(&issuerKey->primaryKey, decodedCert.keyOID);
-                if (ret != 0)
-                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize private key: %d", ret);
-
-                issuerKey->primaryKey.init = true;
-        }
-
-        /* Import the public key from the certificate and check if the public key belongs
-         * to the private key */
-        ret = importPublicKey(&issuerKey->primaryKey,
-                              decodedCert.publicKey,
-                              decodedCert.pubKeySize,
-                              decodedCert.keyOID);
-        if (ret != 0)
-                ERROR_OUT(ret, "Failed to import public key from issuer cert: %d", ret);
-
-#ifdef WOLFSSL_DUAL_ALG_CERTS
-        if (decodedCert.extSapkiSet)
-        {
-                if (issuerKey->alternativeKey.init == false)
-                {
-                        /* Initialize the key */
-                        ret = initPrivateKey(&issuerKey->alternativeKey, decodedCert.sapkiOID);
-                        if (ret != 0)
-                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR,
-                                          "Failed to initialize alternative private key: %d",
-                                          ret);
-
-                        issuerKey->alternativeKey.init = true;
-                }
-
-                /* Import the alternative public key from the certificate and check if the
-                 * the public key belongs to the private key */
-                ret = importPublicKey(&issuerKey->alternativeKey,
-                                      decodedCert.sapkiDer,
-                                      decodedCert.sapkiLen,
-                                      decodedCert.sapkiOID);
-                if (ret != 0)
-                        ERROR_OUT(ret,
-                                  "Failed to import alternative public key from issuer cert: %d",
-                                  ret);
-        }
-#endif
-
-        /* Allocate buffer for the decoded certificate */
-        cert->buffer = (uint8_t*) malloc(der->length);
-        if (cert->buffer == NULL)
-                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for issuer cert");
-
-        /* Replace PEM data with DER data as we don't need the PEM anymore. As DER
-         * encoded data is always smaller than PEM, we are sure that the buffer can
-         * hold the DER data safely. */
-        memcpy(cert->buffer, der->buffer, der->length);
-        cert->size = der->length;
-
-        cert->init = true;
-        ret = KRITIS3M_PKI_SUCCESS;
-
-cleanup:
-        wc_FreeDer(&der);
-        if (decodedCertInit)
-                wc_FreeDecodedCert(&decodedCert);
-
-        return ret;
-}
-
-/* Free the memory of given IssuerCert */
-void issuerCert_free(IssuerCert* cert)
-{
-        if (cert != NULL)
-        {
-                if (cert->init && cert->buffer != NULL)
-                {
-                        free(cert->buffer);
-                }
-
-                free(cert);
-        }
-}
-
 /* Create a new OutputCert object. */
 OutputCert* outputCert_new(void)
 {
@@ -491,12 +358,12 @@ cleanup:
         return ret;
 }
 
-/* Set issuer data of the new OutputCert `outputCert` using data from IssuerCert `issuerCert`
+/* Set issuer data of the new OutputCert `outputCert` using data from InputCert `issuerCert`
  * and issuer private key `issuerKey`.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert, PrivateKey* issuerKey)
+int outputCert_setIssuerData(OutputCert* outputCert, InputCert* issuerCert, PrivateKey* issuerKey)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
 
@@ -551,7 +418,7 @@ int outputCert_setIssuerData(OutputCert* outputCert, IssuerCert* issuerCert, Pri
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_CERT_ERROR, "Failed to set Subject Key Identifier");
 
-        if (issuerCert != NULL && issuerCert->init)
+        if (issuerCert != NULL && issuerCert->buffer != NULL)
         {
                 /* Set the issuer */
                 ret = wc_SetIssuerBuffer(&outputCert->cert, issuerCert->buffer, issuerCert->size);

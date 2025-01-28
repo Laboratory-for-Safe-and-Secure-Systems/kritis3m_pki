@@ -161,13 +161,58 @@ int privateKey_setExternalRef(PrivateKey* key, int deviceId, char const* label)
                 }
 
                 /* Allocate memory */
-                key->primaryKey.external.label = (char*) malloc(strlen(label) + 1);
+                size_t labelLen = strlen(label);
+                key->primaryKey.external.label = (char*) malloc(labelLen + 1);
                 if (key->primaryKey.external.label == NULL)
                         return KRITIS3M_PKI_MEMORY_ERROR;
 
                 /* Copy */
                 strcpy(key->primaryKey.external.label, label);
                 key->primaryKey.external.deviceId = deviceId;
+
+                /* If the key is already initialized, store the label directly
+                 * in the key object, too. */
+                if (key->primaryKey.init == true)
+                {
+                        switch (key->primaryKey.type)
+                        {
+                        case RSAk:
+                                key->primaryKey.key.rsa.devId = deviceId;
+                                key->primaryKey.key.rsa.labelLen = labelLen;
+                                memcpy(key->primaryKey.key.rsa.label, label, labelLen);
+                                break;
+                        case ECDSAk:
+                                key->primaryKey.key.ecc.devId = deviceId;
+                                key->primaryKey.key.ecc.labelLen = labelLen;
+                                memcpy(key->primaryKey.key.ecc.label, label, labelLen);
+                                break;
+                        case ML_DSA_LEVEL2k:
+                        case ML_DSA_LEVEL3k:
+                        case ML_DSA_LEVEL5k:
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                        case DILITHIUM_LEVEL2k:
+                        case DILITHIUM_LEVEL3k:
+                        case DILITHIUM_LEVEL5k:
+#endif
+                                key->primaryKey.key.dilithium.devId = deviceId;
+                                key->primaryKey.key.dilithium.labelLen = labelLen;
+                                memcpy(key->primaryKey.key.dilithium.label, label, labelLen);
+                                break;
+#ifdef HAVE_FALCON
+                        case FALCON_LEVEL1k:
+                        case FALCON_LEVEL5k:
+                                key->primaryKey.key.falcon.devId = deviceId;
+                                key->primaryKey.key.falcon.labelLen = labelLen;
+                                memcpy(key->primaryKey.key.falcon.label, label, labelLen);
+                                break;
+#endif
+                        case ED25519k:
+                        case ED448k:
+                                break;
+                        default:
+                                return KRITIS3M_PKI_KEY_UNSUPPORTED;
+                        };
+                }
         }
         else
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
@@ -197,13 +242,58 @@ int privateKey_setAltExternalRef(PrivateKey* key, int deviceId, char const* labe
                 }
 
                 /* Allocate memory */
-                key->alternativeKey.external.label = (char*) malloc(strlen(label) + 1);
+                size_t labelLen = strlen(label);
+                key->alternativeKey.external.label = (char*) malloc(labelLen + 1);
                 if (key->alternativeKey.external.label == NULL)
                         return KRITIS3M_PKI_MEMORY_ERROR;
 
                 /* Copy */
                 strcpy(key->alternativeKey.external.label, label);
                 key->alternativeKey.external.deviceId = deviceId;
+
+                /* If the key is already initialized, store the label directly
+                 * in the key object, too. */
+                if (key->alternativeKey.init == true)
+                {
+                        switch (key->alternativeKey.type)
+                        {
+                        case RSAk:
+                                key->alternativeKey.key.rsa.devId = deviceId;
+                                key->alternativeKey.key.rsa.labelLen = labelLen;
+                                memcpy(key->alternativeKey.key.rsa.label, label, labelLen);
+                                break;
+                        case ECDSAk:
+                                key->alternativeKey.key.ecc.devId = deviceId;
+                                key->alternativeKey.key.ecc.labelLen = labelLen;
+                                memcpy(key->alternativeKey.key.ecc.label, label, labelLen);
+                                break;
+                        case ML_DSA_LEVEL2k:
+                        case ML_DSA_LEVEL3k:
+                        case ML_DSA_LEVEL5k:
+#ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
+                        case DILITHIUM_LEVEL2k:
+                        case DILITHIUM_LEVEL3k:
+                        case DILITHIUM_LEVEL5k:
+#endif
+                                key->alternativeKey.key.dilithium.devId = deviceId;
+                                key->alternativeKey.key.dilithium.labelLen = labelLen;
+                                memcpy(key->alternativeKey.key.dilithium.label, label, labelLen);
+                                break;
+#ifdef HAVE_FALCON
+                        case FALCON_LEVEL1k:
+                        case FALCON_LEVEL5k:
+                                key->alternativeKey.key.falcon.devId = deviceId;
+                                key->alternativeKey.key.falcon.labelLen = labelLen;
+                                memcpy(key->alternativeKey.key.falcon.label, label, labelLen);
+                                break;
+#endif
+                        case ED25519k:
+                        case ED448k:
+                                break;
+                        default:
+                                return KRITIS3M_PKI_KEY_UNSUPPORTED;
+                        };
+                }
         }
         else
                 return KRITIS3M_PKI_ARGUMENT_ERROR;
@@ -1354,6 +1444,142 @@ void privateKey_free(PrivateKey* key)
                 freeSinglePrivateKey(&key->alternativeKey);
 
                 free(key);
+        }
+}
+
+/* Create a new InputCert object. */
+InputCert* inputCert_new(void)
+{
+        InputCert* cert = (InputCert*) malloc(sizeof(InputCert));
+        if (cert == NULL)
+                return NULL;
+
+        cert->buffer = NULL;
+        cert->size = 0;
+        cert->decoded = (DecodedCert*) malloc(sizeof(DecodedCert));
+        if (cert->decoded == NULL)
+        {
+                free(cert);
+                return NULL;
+        }
+
+        return cert;
+}
+
+/* Initialize the given InputCert `cert` using the PEM encoded data in the provided `buffer`
+ * with `buffer_size` bytes. Check if it is compatible with the provided private key.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int inputCert_initFromBuffer(InputCert* cert, uint8_t const* buffer, size_t buffer_size, PrivateKey* privateKey)
+{
+        int ret = KRITIS3M_PKI_SUCCESS;
+        DerBuffer* der = NULL;
+        EncryptedInfo info;
+
+        if (cert == NULL || buffer == NULL) /* privateKey may be NULL */
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        memset(&info, 0, sizeof(EncryptedInfo));
+
+        /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer object */
+        ret = wc_PemToDer(buffer, buffer_size, CERT_TYPE, &der, NULL, &info, NULL);
+        if (ret != 0)
+                ERROR_OUT(KRITIS3M_PKI_PEM_DECODE_ERROR, "Failed to convert PEM to DER: %d", ret);
+
+        /* Allocate buffer for the DER certificate */
+        cert->buffer = (uint8_t*) malloc(der->length);
+        if (cert->buffer == NULL)
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for input cert");
+
+        memcpy(cert->buffer, der->buffer, der->length);
+        cert->size = der->length;
+
+        /* Free the DER structure as it is not needed anymore */
+        wc_FreeDer(&der);
+
+        /* Decode the cert */
+        wc_InitDecodedCert(cert->decoded, cert->buffer, cert->size, NULL);
+        ret = wc_ParseCert(cert->decoded, CERT_TYPE, NO_VERIFY, NULL);
+        if (ret != 0)
+                ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to parse input certificate: %d", ret);
+
+        if (privateKey != NULL)
+        {
+                /* If the private key is not yet properly initialized, fill it with data from the
+                 * certificate. This is the case when using an external private key stored on a
+                 * secure element. */
+                if (privateKey->primaryKey.init == false)
+                {
+                        /* Initialize the key */
+                        ret = initPrivateKey(&privateKey->primaryKey, cert->decoded->keyOID);
+                        if (ret != 0)
+                                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR,
+                                          "Failed to initialize private key: %d",
+                                          ret);
+
+                        privateKey->primaryKey.init = true;
+                }
+
+                /* Import the public key from the certificate and check if the public key belongs
+                 * to the private key */
+                ret = importPublicKey(&privateKey->primaryKey,
+                                      cert->decoded->publicKey,
+                                      cert->decoded->pubKeySize,
+                                      cert->decoded->keyOID);
+                if (ret != 0)
+                        ERROR_OUT(ret, "Failed to import public key from input cert: %d", ret);
+
+#ifdef WOLFSSL_DUAL_ALG_CERTS
+                if (cert->decoded->extSapkiSet)
+                {
+                        if (privateKey->alternativeKey.init == false)
+                        {
+                                /* Initialize the key */
+                                ret = initPrivateKey(&privateKey->alternativeKey,
+                                                     cert->decoded->sapkiOID);
+                                if (ret != 0)
+                                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize alternative private key: %d", ret);
+
+                                privateKey->alternativeKey.init = true;
+                        }
+
+                        /* Import the alternative public key from the certificate and check if the
+                         * the public key belongs to the private key */
+                        ret = importPublicKey(&privateKey->alternativeKey,
+                                              cert->decoded->sapkiDer,
+                                              cert->decoded->sapkiLen,
+                                              cert->decoded->sapkiOID);
+                        if (ret != 0)
+                                ERROR_OUT(ret, "Failed to import alternative public key from input cert: %d", ret);
+                }
+#endif
+        }
+
+        ret = KRITIS3M_PKI_SUCCESS;
+
+cleanup:
+        if (der != NULL)
+                wc_FreeDer(&der);
+
+        return ret;
+}
+
+/* Free the memory of given InputCert */
+void inputCert_free(InputCert* cert)
+{
+        if (cert != NULL)
+        {
+                if (cert->buffer != NULL)
+                        free(cert->buffer);
+
+                if (cert->decoded != NULL)
+                {
+                        wc_FreeDecodedCert(cert->decoded);
+                        free(cert->decoded);
+                }
+
+                free(cert);
         }
 }
 

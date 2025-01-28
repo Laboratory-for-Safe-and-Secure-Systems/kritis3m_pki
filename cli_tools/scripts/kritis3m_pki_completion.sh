@@ -102,23 +102,29 @@ _kritis3m_pki_completions() {
 
 # Usage: kritis3m_se_importer [OPTIONS]
 #
-# Key file input:
-#   --key <file>                  Path to the primary key in PEM format
-#   --alt_key <file>              Path to the alternative key in PEM format
+# File input:
+#   --key <file>                      Path to the primary key (PEM)
+#   --alt_key <file>                  Path to the alternative key (PEM)
+#   --entity_cert <file>              Path to the entity cert (PEM)
+#   --intermediate_cert <file>        Path to the intermediate cert (PEM)
+#   --root_cert <file>                Path to the root cert (PEM)
 #
-# PKCS#11 key labels:
-#   --key_label <label>           Label of the primary key in PKCS#11
-#   --alt_key_label <label>       Label of the alternative key in PKCS#11
+# PKCS#11 labels:
+#   --key_label <label>               Label of the primary key
+#   --alt_key_label <label>           Label of the alternative key
+#   --entity_cert_label <file>        Label of the entity certificate
+#   --intermediate_cert_label <file>  Label of the intermediate certificate
+#   --root_cert_label <file>          Label of the intermediate certificate
 #
 # Secure Element:
-#   --module_path <file>           Path to the secure element middleware
-#   --slot <id>                   Slot id of the secure element containing the issuer keys (default is first available)
-#   --pin <pin>                   PIN for the secure element
+#   --module_path <file>              Path to the PKCS#11 module library
+#   --slot <id>                       Slot id of the PKCS#11 token (default is first available)
+#   --pin <pin>                       PIN for the PKCS#11 token
 #
 # General:
-#   --verbose                     Enable verbose output
-#   --debug                       Enable debug output
-#   --help                        Print this help
+#   --verbose                         Enable verbose output
+#   --debug                           Enable debug output
+#   --help                            Print this help
 
 _kritis3m_se_importer_completions() {
     local cur prev opts
@@ -126,17 +132,17 @@ _kritis3m_se_importer_completions() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD - 1]}"
 
-    opts="--key --alt_key \
-          --key_label --alt_key_label \
+    opts="--key --alt_key --entity_cert --intermediate_cert --root_cert \
+          --key_label --alt_key_label --entity_cert_label --intermediate_cert_label --root_cert_label \
           --module_path --slot --pin \
           --verbose --debug --help"
 
     case "${prev}" in
-    --key | --alt_key | --module_path)
+    --key | --alt_key | --entity_cert | --intermediate_cert | --root_cert | --module_path)
         _filedir
         return 0
         ;;
-    --slot | --pin | --key_label | --alt_key_label)
+    --slot | --pin | --key_label | --alt_key_label | --entity_cert_label | --intermediate_cert_label | --root_cert_label)
         # No file completion needed for these options, just suggest an empty list
         COMPREPLY=()
         return 0

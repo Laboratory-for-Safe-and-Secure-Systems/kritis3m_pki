@@ -9,7 +9,6 @@
 /* Forward declarations of our data types.
  * The actual declarations are in the source file to hide
  * the internal dependencies. */
-typedef struct issuerCert IssuerCert;
 typedef struct outputCert OutputCert;
 
 /* Initialize the PKCS#11 token for the issuer key. Use the library from `path` and
@@ -28,22 +27,6 @@ KRITIS3M_PKI_API int kritis3m_pki_init_issuer_token(char const* path,
 /* Close the PKCS#11 token for the issuer key. */
 KRITIS3M_PKI_API int kritis3m_pki_close_issuer_token(void);
 
-/* Create a new IssuerCert object. */
-KRITIS3M_PKI_API IssuerCert* issuerCert_new(void);
-
-/* Initialize the given IssuerCert `cert` using the PEM encoded data in the provided `buffer`
- * with `buffer_size` bytes. Check if it is compatible with the provided issuer private key.
- *
- * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
- */
-KRITIS3M_PKI_API int issuerCert_initFromBuffer(IssuerCert* cert,
-                                               uint8_t const* buffer,
-                                               size_t buffer_size,
-                                               PrivateKey* issuerKey);
-
-/* Free the memory of given IssuerCert */
-KRITIS3M_PKI_API void issuerCert_free(IssuerCert* cert);
-
 /* Create a new OutputCert object. */
 KRITIS3M_PKI_API OutputCert* outputCert_new(void);
 
@@ -55,13 +38,13 @@ KRITIS3M_PKI_API OutputCert* outputCert_new(void);
 KRITIS3M_PKI_API int
         outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t buffer_size);
 
-/* Set issuer data of the new OutputCert `outputCert` using data from IssuerCert `issuerCert`
+/* Set issuer data of the new OutputCert `outputCert` using data from InputCert `issuerCert`
  * and issuer private key `issuerKey`.
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
 KRITIS3M_PKI_API int outputCert_setIssuerData(OutputCert* outputCert,
-                                              IssuerCert* issuerCert,
+                                              InputCert* issuerCert,
                                               PrivateKey* issuerKey);
 
 /* Set the validity period to `days` days of the new OutputCert `outputCert`.

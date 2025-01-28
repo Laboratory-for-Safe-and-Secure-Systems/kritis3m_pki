@@ -64,11 +64,11 @@ struct privateKey
         SinglePrivateKey alternativeKey;
 };
 
-struct issuerCert
+struct inputCert
 {
-        bool init;
         uint8_t* buffer;
         size_t size;
+        DecodedCert* decoded;
 };
 
 struct signingRequest

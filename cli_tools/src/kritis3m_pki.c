@@ -64,7 +64,7 @@ int main(int argc, char** argv)
         pki_pkcs11 pkcs11 = {0};
 
         PrivateKey* issuerKey = NULL;
-        IssuerCert* issuerCert = NULL;
+        InputCert* issuerCert = NULL;
         PrivateKey* entityKey = NULL;
         SigningRequest* request = NULL;
         OutputCert* outputCert = NULL;
@@ -485,7 +485,7 @@ int main(int argc, char** argv)
         {
                 LOG_INFO("Loading issuer cert from \"%s\"", paths.issuerCertPath);
 
-                issuerCert = issuerCert_new();
+                issuerCert = inputCert_new();
                 if (issuerCert == NULL)
                         ERROR_OUT("unable to allocate memory for issuer cert");
 
@@ -495,7 +495,7 @@ int main(int argc, char** argv)
                         ERROR_OUT("unable to read issuer cert file from \"%s\"", paths.issuerCertPath);
 
                 /* Load cert */
-                ret = issuerCert_initFromBuffer(issuerCert, buffer, bytesInBuffer, issuerKey);
+                ret = inputCert_initFromBuffer(issuerCert, buffer, bytesInBuffer, issuerKey);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to parse issuer cert: %s (%d)",
                                   kritis3m_pki_error_message(ret),
@@ -639,7 +639,7 @@ exit:
         privateKey_free(issuerKey);
         privateKey_free(entityKey);
 
-        issuerCert_free(issuerCert);
+        inputCert_free(issuerCert);
 
         signingRequest_free(request);
 

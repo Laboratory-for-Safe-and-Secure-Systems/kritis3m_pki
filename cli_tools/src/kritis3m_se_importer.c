@@ -25,6 +25,12 @@ LOG_MODULE_CREATE(kritis3m_se_importer);
                 bytesInBuffer = 0;                                                                 \
         }
 
+#define RESET_INPUT_CERT()                                                                         \
+        {                                                                                          \
+                inputCert_free(cert);                                                              \
+                cert = NULL;                                                                       \
+        }
+
 static const struct option cli_options[] = {
         {"key", required_argument, 0, 0x01},
         {"key_label", required_argument, 0, 0x02},
@@ -33,6 +39,12 @@ static const struct option cli_options[] = {
         {"module_path", required_argument, 0, 0x05},
         {"slot", required_argument, 0, 0x06},
         {"pin", required_argument, 0, 0x07},
+        {"entity_cert", required_argument, 0, 0x08},
+        {"entity_cert_label", required_argument, 0, 0x09},
+        {"intermediate_cert", required_argument, 0, 0x0A},
+        {"intermediate_cert_label", required_argument, 0, 0x0B},
+        {"root_cert", required_argument, 0, 0x0C},
+        {"root_cert_label", required_argument, 0, 0x0D},
         {"verbose", no_argument, 0, 'v'},
         {"debug", no_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
@@ -42,24 +54,30 @@ static const struct option cli_options[] = {
 void print_help(char* prog_name)
 {
         printf("Usage: %s [OPTIONS]\r\n", prog_name);
-        printf("\nKey file input:\r\n");
-        printf("  --key <file>                  Path to the primary key in PEM format\r\n");
-        printf("  --alt_key <file>              Path to the alternative key in PEM format\r\n");
+        printf("\nFile input:\r\n");
+        printf("  --key <file>                      Path to the primary key (PEM)\r\n");
+        printf("  --alt_key <file>                  Path to the alternative key (PEM)\r\n");
+        printf("  --entity_cert <file>              Path to the entity cert (PEM)\r\n");
+        printf("  --intermediate_cert <file>        Path to the intermediate cert (PEM)\r\n");
+        printf("  --root_cert <file>                Path to the root cert (PEM)\r\n");
 
-        printf("\nPKCS#11 key labels:\r\n");
-        printf("  --key_label <label>           Label of the primary key in PKCS#11\r\n");
-        printf("  --alt_key_label <label>       Label of the alternative key in PKCS#11\r\n");
+        printf("\nPKCS#11 labels:\r\n");
+        printf("  --key_label <label>               Label of the primary key\r\n");
+        printf("  --alt_key_label <label>           Label of the alternative key\r\n");
+        printf("  --entity_cert_label <file>        Label of the entity certificate\r\n");
+        printf("  --intermediate_cert_label <file>  Label of the intermediate certificate\r\n");
+        printf("  --root_cert_label <file>          Label of the intermediate certificate\r\n");
 
-        printf("\nSecure Element:\r\n");
-        printf("  --module_path <file>          Path to the PKCS#11 module library\r\n");
-        printf("  --slot <id>                   Slot id of the secure element containing the "
-               "issuer keys (default is first available)\r\n");
-        printf("  --pin <pin>                   PIN for the secure element\r\n");
+        printf("\nPKCS#11 token:\r\n");
+        printf("  --module_path <file>              Path to the PKCS#11 module library\r\n");
+        printf("  --slot <id>                       Slot id of the PKCS#11 token (default is first "
+               "available)\r\n");
+        printf("  --pin <pin>                       PIN for the PKCS#11 token\r\n");
 
         printf("\nGeneral:\r\n");
-        printf("  --verbose                     Enable verbose output\r\n");
-        printf("  --debug                       Enable debug output\r\n");
-        printf("  --help                        Print this help\r\n");
+        printf("  --verbose                         Enable verbose output\r\n");
+        printf("  --debug                           Enable debug output\r\n");
+        printf("  --help                            Print this help\r\n");
 }
 
 static void pki_lib_log_callback(int32_t level, char const* message)
@@ -92,10 +110,16 @@ int main(int argc, char** argv)
         /* Paths */
         char const* keyPath = NULL;
         char const* altKeyPath = NULL;
+        char const* entityCertPath = NULL;
+        char const* intermediateCertPath = NULL;
+        char const* rootCertPath = NULL;
 
         /* PKCS#11 labels */
         char const* keyLabel = NULL;
         char const* altKeyLabel = NULL;
+        char const* entityCertLabel = NULL;
+        char const* intermediateCertLabel = NULL;
+        char const* rootCertLabel = NULL;
 
         /* PKCS#11 */
         char const* modulePath = NULL;
@@ -108,6 +132,7 @@ int main(int argc, char** argv)
         uint8_t* buffer = NULL;
 
         PrivateKey* key = NULL;
+        InputCert* cert = NULL;
 
         /* Parse CLI args */
         if (argc < 2)
@@ -147,6 +172,24 @@ int main(int argc, char** argv)
                         pin = optarg;
                         pinSize = strlen(pin);
                         break;
+                case 0x08: /* entity_cert */
+                        entityCertPath = optarg;
+                        break;
+                case 0x09: /* entity_cert_label */
+                        entityCertLabel = optarg;
+                        break;
+                case 0x0A: /* intermediate_cert */
+                        intermediateCertPath = optarg;
+                        break;
+                case 0x0B: /* intermediate_cert_label */
+                        intermediateCertLabel = optarg;
+                        break;
+                case 0x0C: /* root_cert */
+                        rootCertPath = optarg;
+                        break;
+                case 0x0D: /* root_cert_label */
+                        rootCertLabel = optarg;
+                        break;
                 case 'v':
                         LOG_LVL_SET(LOG_LVL_INFO);
                         break;
@@ -176,54 +219,29 @@ int main(int argc, char** argv)
                           kritis3m_pki_error_message(ret),
                           ret);
 
+        if (modulePath == NULL)
+                ERROR_OUT("No PKCS#11 module path provided");
+
         /* Initialize the PKCS#11 module */
+        LOG_INFO("Initializing PKCS#11 module \"%s\"", modulePath);
         deviceId = kritis3m_pki_init_entity_token(modulePath, slot, (uint8_t const*) pin, pinSize);
         if (deviceId < KRITIS3M_PKI_SUCCESS)
                 ERROR_OUT("unable to initialize token: %s (%d)",
                           kritis3m_pki_error_message(deviceId),
                           deviceId);
 
-        /* Prepare the key */
-        key = privateKey_new();
-        if (key == NULL)
-                ERROR_OUT("unable to allocate memory for key");
-
-        /* Set the external references */
-        if (keyLabel != NULL)
+        if (keyPath != NULL && keyLabel != NULL)
         {
-                LOG_INFO("Using key label \"%s\"", keyLabel);
+                key = privateKey_new();
+                if (key == NULL)
+                        ERROR_OUT("unable to allocate memory for key");
 
-                ret = privateKey_setExternalRef(key, deviceId, keyLabel);
-                if (ret != KRITIS3M_PKI_SUCCESS)
-                        ERROR_OUT("unable to set external reference for key: %s (%d)",
-                                  kritis3m_pki_error_message(ret),
-                                  ret);
-
-                /* Check if an alternative key gets its own label */
-                if (altKeyLabel != NULL)
-                {
-                        LOG_INFO("Using alternative key label \"%s\"", altKeyLabel);
-
-                        ret = privateKey_setAltExternalRef(key, deviceId, altKeyLabel);
-                        if (ret != KRITIS3M_PKI_SUCCESS)
-                                ERROR_OUT("unable to set external reference for alt key: %s (%d)",
-                                          kritis3m_pki_error_message(ret),
-                                          ret);
-                }
-        }
-        else
-                ERROR_OUT("No PKCS#11 label for the key provided");
-
-        if (keyPath != NULL)
-        {
                 LOG_INFO("Loading key from \"%s\"", keyPath);
 
-                /* Read file */
                 ret = read_file(keyPath, &buffer, &bytesInBuffer);
                 if (ret < 0)
-                        ERROR_OUT("unable to read key file from \"%s\"", keyPath);
+                        ERROR_OUT("unable to read key from \"%s\"", keyPath);
 
-                /* Load key */
                 ret = privateKey_loadKeyFromBuffer(key, buffer, bytesInBuffer);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to parse key: %s (%d)", kritis3m_pki_error_message(ret), ret);
@@ -238,7 +256,7 @@ int main(int argc, char** argv)
                         /* Read file */
                         ret = read_file(altKeyPath, &buffer, &bytesInBuffer);
                         if (ret < 0)
-                                ERROR_OUT("unable to read alt key file from \"%s\"", altKeyPath);
+                                ERROR_OUT("unable to read alt key from \"%s\"", altKeyPath);
 
                         /* Load key */
                         ret = privateKey_loadAltKeyFromBuffer(key, buffer, bytesInBuffer);
@@ -250,20 +268,166 @@ int main(int argc, char** argv)
                         RESET_BUFFER();
                 }
         }
-        else
-                ERROR_OUT("No key provided");
+        else if ((keyPath != NULL && keyLabel == NULL) || (keyPath == NULL && keyLabel != NULL))
+        {
+                ERROR_OUT("Both a PKCS#11 key label and a file path are required");
+        }
 
-        /* Import the key into the secure element */
-        ret = kritis3m_pki_entity_token_import_key(key);
-        if (ret != KRITIS3M_PKI_SUCCESS)
-                ERROR_OUT("unable to import key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+        if (entityCertPath != NULL && entityCertLabel != NULL)
+        {
+                cert = inputCert_new();
+                if (cert == NULL)
+                        ERROR_OUT("unable to allocate memory for certificate");
 
-        LOG_INFO("Key successfully imported");
+                LOG_INFO("Loading entity cert from \"%s\"", entityCertPath);
+
+                ret = read_file(entityCertPath, &buffer, &bytesInBuffer);
+                if (ret < 0)
+                        ERROR_OUT("unable to read entity cert from \"%s\"", entityCertPath);
+
+                /* By providing the already loaded private key here, the private key is also
+                 * matched to the public key from the certificate. */
+                ret = inputCert_initFromBuffer(cert, buffer, bytesInBuffer, key);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to parse entity cert: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
+
+                LOG_INFO("Importing entity cert with label \"%s\"", entityCertLabel);
+
+                ret = kritis3m_pki_entity_token_import_cert(cert, entityCertLabel);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to import entity cert: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
+
+                LOG_INFO("Entity certificate successfully imported");
+
+                RESET_INPUT_CERT();
+                RESET_BUFFER();
+        }
+        else if ((entityCertPath != NULL && entityCertLabel == NULL) ||
+                 (entityCertPath == NULL && entityCertLabel != NULL))
+        {
+                ERROR_OUT("Both a PKCS#11 entity certificate label and a file path are required");
+        }
+
+        if (key != NULL)
+        {
+                LOG_INFO("Importing key with label \"%s\"", keyLabel);
+
+                if (entityCertLabel != NULL && strcmp(keyLabel, entityCertLabel) != 0)
+                        LOG_WARN("Label of private key and entity certificate do not match");
+
+                ret = privateKey_setExternalRef(key, deviceId, keyLabel);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to set external reference for key: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
+
+                /* Check if an alternative key gets its own label. If not, the one from
+                 * the primary above is used. */
+                if (altKeyLabel != NULL)
+                {
+                        LOG_INFO("Using alternative key label \"%s\"", altKeyLabel);
+
+                        ret = privateKey_setAltExternalRef(key, deviceId, altKeyLabel);
+                        if (ret != KRITIS3M_PKI_SUCCESS)
+                                ERROR_OUT("unable to set external reference for alt key: %s (%d)",
+                                          kritis3m_pki_error_message(ret),
+                                          ret);
+                }
+
+                /* Import the key into the secure element */
+                ret = kritis3m_pki_entity_token_import_key(key);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to import key: %s (%d)", kritis3m_pki_error_message(ret), ret);
+
+                LOG_INFO("Key successfully imported");
+        }
+
+        if (intermediateCertPath != NULL && intermediateCertLabel != NULL)
+        {
+                cert = inputCert_new();
+                if (cert == NULL)
+                        ERROR_OUT("unable to allocate memory for certificate");
+
+                LOG_INFO("Loading intermediate cert from \"%s\"", intermediateCertPath);
+
+                ret = read_file(intermediateCertPath, &buffer, &bytesInBuffer);
+                if (ret < 0)
+                        ERROR_OUT("unable to read intermediate cert from \"%s\"", intermediateCertPath);
+
+                /* Do not provide a private key here as we don't have the intermediate key */
+                ret = inputCert_initFromBuffer(cert, buffer, bytesInBuffer, NULL);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to parse intermediate cert: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
+
+                LOG_INFO("Importing intermediate cert with label \"%s\"", intermediateCertLabel);
+
+                ret = kritis3m_pki_entity_token_import_cert(cert, intermediateCertLabel);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to import intermediate cert: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
+
+                LOG_INFO("Intermediate certificate successfully imported");
+
+                RESET_INPUT_CERT();
+                RESET_BUFFER();
+        }
+        else if ((intermediateCertPath != NULL && intermediateCertLabel == NULL) ||
+                 (intermediateCertPath == NULL && intermediateCertLabel != NULL))
+        {
+                ERROR_OUT("Both a PKCS#11 intermediate certificate label and a file path are "
+                          "required");
+        }
+
+        if (rootCertPath != NULL && rootCertLabel != NULL)
+        {
+                cert = inputCert_new();
+                if (cert == NULL)
+                        ERROR_OUT("unable to allocate memory for certificate");
+
+                LOG_INFO("Loading root cert from \"%s\"", rootCertPath);
+
+                ret = read_file(rootCertPath, &buffer, &bytesInBuffer);
+                if (ret < 0)
+                        ERROR_OUT("unable to read root cert from \"%s\"", rootCertPath);
+
+                /* Do not provide a private key here as we don't have the root key */
+                ret = inputCert_initFromBuffer(cert, buffer, bytesInBuffer, NULL);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to parse root cert: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
+
+                LOG_INFO("Importing root cert with label \"%s\"", rootCertLabel);
+
+                ret = kritis3m_pki_entity_token_import_cert(cert, rootCertLabel);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to import root cert: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
+
+                LOG_INFO("Root certificate successfully imported");
+
+                RESET_INPUT_CERT();
+                RESET_BUFFER();
+        }
+        else if ((rootCertPath != NULL && rootCertLabel == NULL) ||
+                 (rootCertPath == NULL && rootCertLabel != NULL))
+        {
+                ERROR_OUT("Both a PKCS#11 root certificate label and a file path are required");
+        }
 
 exit:
         kritis3m_pki_close_entity_token();
 
         privateKey_free(key);
+        inputCert_free(cert);
 
         if (buffer != NULL)
                 free(buffer);

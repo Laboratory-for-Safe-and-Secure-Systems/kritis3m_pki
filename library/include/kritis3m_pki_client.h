@@ -45,6 +45,12 @@ KRITIS3M_PKI_API int kritis3m_pki_init_entity_token(char const* path,
  */
 KRITIS3M_PKI_API int kritis3m_pki_entity_token_import_key(PrivateKey* key);
 
+/* Import the InputCert object 'cert' into an external reference.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+KRITIS3M_PKI_API int kritis3m_pki_entity_token_import_cert(InputCert* cert, char const* label);
+
 /* Close the PKCS#11 token for the entity key. */
 KRITIS3M_PKI_API int kritis3m_pki_close_entity_token(void);
 

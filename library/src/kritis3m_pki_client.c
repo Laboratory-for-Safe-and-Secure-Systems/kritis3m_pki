@@ -143,6 +143,48 @@ cleanup:
 #endif
 }
 
+/* Import the InputCert object 'cert' into an external reference.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+KRITIS3M_PKI_API int kritis3m_pki_entity_token_import_cert(InputCert* cert, char const* label)
+{
+#ifdef HAVE_PKCS11
+        int ret = KRITIS3M_PKI_SUCCESS;
+
+        if ((cert == NULL) || (cert->buffer == NULL))
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        if (entityTokenInitialized == false)
+                ERROR_OUT(KRITIS3M_PKI_LOG_LEVEL_ERR, "PKCS#11 token not initialized");
+
+        /* Determine certificate type */
+        int type = -1;
+        if (cert->decoded->isCA)
+        {
+                size_t len = MIN(cert->decoded->subjectRawLen, cert->decoded->issuerRawLen);
+
+                if (memcmp(cert->decoded->issuerRaw, cert->decoded->subjectRaw, len) == 0)
+                        type = PKCS11_CERT_TYPE_ROOT;
+                else
+                        type = PKCS11_CERT_TYPE_INTERMEDIATE;
+        }
+        else
+                type = PKCS11_CERT_TYPE_ENTITY;
+
+        /* Import the cert */
+        ret = wc_Pkcs11StoreCert_ex(&entityToken, type, cert->decoded, label, 1);
+        if (ret != 0)
+                ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "Failed to import cert: %d", ret);
+
+cleanup:
+        return ret;
+#else
+        pki_log(KRITIS3M_PKI_LOG_LEVEL_ERR, "PKCS#11 support not compiled in");
+        return KRITIS3M_PKI_PKCS11_ERROR;
+#endif
+}
+
 /* Close the PKCS#11 token for the entity key. */
 int kritis3m_pki_close_entity_token(void)
 {

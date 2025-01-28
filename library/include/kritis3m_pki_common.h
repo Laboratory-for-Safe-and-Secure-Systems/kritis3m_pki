@@ -35,6 +35,7 @@
  * The actual declarations are in the source file to hide
  * the internal dependencies. */
 typedef struct privateKey PrivateKey;
+typedef struct inputCert InputCert;
 
 /* Error Codes */
 enum KRITIS3M_PKI_ERROR_CODES
@@ -165,6 +166,22 @@ KRITIS3M_PKI_API int privateKey_writeAltKeyToBuffer(PrivateKey* key, uint8_t* bu
 
 /* Free the memory of given PrivateKey */
 KRITIS3M_PKI_API void privateKey_free(PrivateKey* key);
+
+/* Create a new InputCert object. */
+KRITIS3M_PKI_API InputCert* inputCert_new(void);
+
+/* Initialize the given InputCert `cert` using the PEM encoded data in the provided `buffer`
+ * with `buffer_size` bytes. Check if it is compatible with the provided private key.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+KRITIS3M_PKI_API int inputCert_initFromBuffer(InputCert* cert,
+                                              uint8_t const* buffer,
+                                              size_t buffer_size,
+                                              PrivateKey* privateKey);
+
+/* Free the memory of given InputCert */
+KRITIS3M_PKI_API void inputCert_free(InputCert* cert);
 
 /* Shutdown and cleanup for the KRITIS3M PKI libraries. */
 KRITIS3M_PKI_API void kritis3m_pki_shutdown(void);
