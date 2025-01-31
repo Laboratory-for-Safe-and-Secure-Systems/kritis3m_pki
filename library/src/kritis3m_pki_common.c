@@ -236,7 +236,7 @@ int privateKey_setAltExternalRef(PrivateKey* key, int deviceId, char const* labe
                 /* Free previous if present */
                 if (key->alternativeKey.external.label != NULL)
                 {
-                        pki_log(KRITIS3M_PKI_LOG_LEVEL_WRN,
+                        pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG,
                                 "Overwriting existing alternative key reference");
                         free(key->alternativeKey.external.label);
                 }
@@ -1097,17 +1097,17 @@ int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size
                 /* We cannot export the private key. However, we write the
                  * PKCS#11 label to the buffer to store the label for later
                  * use. */
-                size_t label_size = strlen(key->external.label);
-                if (*buffer_size < (label_size + PKCS11_LABEL_IDENTIFIER_LEN + 1))
+                ret = snprintf((char*) buffer,
+                               *buffer_size,
+                               "%s%s%s",
+                               PKCS11_LABEL_IDENTIFIER,
+                               key->external.label,
+                               PKCS11_LABEL_TERMINATOR);
+
+                if (ret < 0 || ret >= *buffer_size)
                         return KRITIS3M_PKI_MEMORY_ERROR;
 
-                /* Copy identifier */
-                memcpy(buffer, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN);
-
-                /* Copy label */
-                strcpy((char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN, key->external.label);
-
-                *buffer_size = label_size + PKCS11_LABEL_IDENTIFIER_LEN + 1;
+                *buffer_size = ret;
 
                 return KRITIS3M_PKI_SUCCESS;
         }

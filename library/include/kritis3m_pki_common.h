@@ -30,6 +30,7 @@
 
 #define PKCS11_LABEL_IDENTIFIER "pkcs11:"
 #define PKCS11_LABEL_IDENTIFIER_LEN 7
+#define PKCS11_LABEL_TERMINATOR "\r\n"
 
 /* Forward declarations of our data types.
  * The actual declarations are in the source file to hide

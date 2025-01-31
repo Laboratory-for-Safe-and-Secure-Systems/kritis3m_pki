@@ -117,8 +117,10 @@ int main(int argc, char** argv)
                 /* Check if an external private key should be used */
                 if (strncmp((char*) buffer, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) == 0)
                 {
-                        LOG_INFO("Referencing external entity key with label \"%s\"",
-                                 (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
+                        char* label = strtok((char*) buffer, PKCS11_LABEL_TERMINATOR);
+                        label += PKCS11_LABEL_IDENTIFIER_LEN;
+
+                        LOG_INFO("Referencing external entity key with label \"%s\"", label);
 
                         /* Initialize the related PKCS#11 token */
                         pkcs11.entityModule
@@ -133,14 +135,32 @@ int main(int argc, char** argv)
                                           pkcs11.entityModule.deviceId);
 
                         /* Set the external reference */
-                        ret = privateKey_setExternalRef(entityKey,
-                                                        pkcs11.entityModule.deviceId,
-                                                        (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
+                        ret = privateKey_setExternalRef(entityKey, pkcs11.entityModule.deviceId, label);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to set external reference for entity key: %s "
                                           "(%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
+
+                        /* Check if an alternative key label is also present */
+                        label = strtok(NULL, PKCS11_LABEL_TERMINATOR);
+                        if ((label != NULL) &&
+                            (strncmp(label, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) == 0))
+                        {
+                                label += PKCS11_LABEL_IDENTIFIER_LEN;
+                                LOG_INFO("Referencing external entity alt key with label \"%s\"",
+                                         label);
+
+                                /* Set the external reference */
+                                ret = privateKey_setAltExternalRef(entityKey,
+                                                                   pkcs11.entityModule.deviceId,
+                                                                   label);
+                                if (ret != KRITIS3M_PKI_SUCCESS)
+                                        ERROR_OUT("unable to set external reference for entity alt "
+                                                  "key: %s (%d)",
+                                                  kritis3m_pki_error_message(ret),
+                                                  ret);
+                        }
                 }
                 else
                 {
@@ -184,8 +204,11 @@ int main(int argc, char** argv)
                                     PKCS11_LABEL_IDENTIFIER,
                                     PKCS11_LABEL_IDENTIFIER_LEN) == 0)
                         {
+                                char* label = strtok((char*) buffer, PKCS11_LABEL_TERMINATOR);
+                                label += PKCS11_LABEL_IDENTIFIER_LEN;
+
                                 LOG_INFO("Referencing external entity alt key with label \"%s\"",
-                                         (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
+                                         label);
 
                                 /* Check if the token is not yet initialized */
                                 if (pkcs11.entityModule.deviceId < 0)
@@ -212,8 +235,7 @@ int main(int argc, char** argv)
                                 /* Set the external reference */
                                 ret = privateKey_setAltExternalRef(entityKey,
                                                                    pkcs11.entityModule.deviceId,
-                                                                   (char*) buffer +
-                                                                           PKCS11_LABEL_IDENTIFIER_LEN);
+                                                                   label);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
                                         ERROR_OUT("unable to set external reference for entity alt "
                                                   "key: %s (%d)",
@@ -352,8 +374,10 @@ int main(int argc, char** argv)
                 /* Check if an external private key should be used */
                 if (strncmp((char*) buffer, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) == 0)
                 {
-                        LOG_INFO("Referencing external issuer key with label \"%s\"",
-                                 (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
+                        char* label = strtok((char*) buffer, PKCS11_LABEL_TERMINATOR);
+                        label += PKCS11_LABEL_IDENTIFIER_LEN;
+
+                        LOG_INFO("Referencing external issuer key with label \"%s\"", label);
 
                         /* Initialize the related PKCS#11 token */
                         pkcs11.issuerModule
@@ -368,14 +392,32 @@ int main(int argc, char** argv)
                                           pkcs11.issuerModule.deviceId);
 
                         /* Set the external reference */
-                        ret = privateKey_setExternalRef(issuerKey,
-                                                        pkcs11.issuerModule.deviceId,
-                                                        (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
+                        ret = privateKey_setExternalRef(issuerKey, pkcs11.issuerModule.deviceId, label);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to set external reference for issuer key: %s "
                                           "(%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
+
+                        /* Check if an alternative key label is also present */
+                        label = strtok(NULL, PKCS11_LABEL_TERMINATOR);
+                        if ((label != NULL) &&
+                            (strncmp(label, PKCS11_LABEL_IDENTIFIER, PKCS11_LABEL_IDENTIFIER_LEN) == 0))
+                        {
+                                label += PKCS11_LABEL_IDENTIFIER_LEN;
+                                LOG_INFO("Referencing external issuer alt key with label \"%s\"",
+                                         label);
+
+                                /* Set the external reference */
+                                ret = privateKey_setAltExternalRef(issuerKey,
+                                                                   pkcs11.issuerModule.deviceId,
+                                                                   label);
+                                if (ret != KRITIS3M_PKI_SUCCESS)
+                                        ERROR_OUT("unable to set external reference for issuer alt "
+                                                  "key: %s (%d)",
+                                                  kritis3m_pki_error_message(ret),
+                                                  ret);
+                        }
                 }
                 else
                 {
@@ -419,8 +461,11 @@ int main(int argc, char** argv)
                                     PKCS11_LABEL_IDENTIFIER,
                                     PKCS11_LABEL_IDENTIFIER_LEN) == 0)
                         {
+                                char* label = strtok((char*) buffer, PKCS11_LABEL_TERMINATOR);
+                                label += PKCS11_LABEL_IDENTIFIER_LEN;
+
                                 LOG_INFO("Referencing external issuer alt key with label \"%s\"",
-                                         (char*) buffer + PKCS11_LABEL_IDENTIFIER_LEN);
+                                         label);
 
                                 /* Check if the token is not yet initialized */
                                 if (pkcs11.issuerModule.deviceId < 0)
@@ -447,8 +492,7 @@ int main(int argc, char** argv)
                                 /* Set the external reference */
                                 ret = privateKey_setAltExternalRef(issuerKey,
                                                                    pkcs11.issuerModule.deviceId,
-                                                                   (char*) buffer +
-                                                                           PKCS11_LABEL_IDENTIFIER_LEN);
+                                                                   label);
                                 if (ret != KRITIS3M_PKI_SUCCESS)
                                         ERROR_OUT("unable to set external reference for issuer alt "
                                                   "key: %s (%d)",
