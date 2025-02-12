@@ -289,6 +289,7 @@ static void print_help(char const* name)
         printf("                                  ed25519, ed448\n");
         printf("                                  mldsa44, mldsa65, mldsa87\n");
         printf("                                  dilithium2, dilithium3, dilithium5\n");
+        printf("                                  falcon512, falcon1024\n");
         printf("  --gen_key <alogrithm>       Algorithm for key generation (see list above)\n");
         printf("  --gen_alt_key <alogrithm>   Algorithm for alternative key generation (see list above)\n");
 

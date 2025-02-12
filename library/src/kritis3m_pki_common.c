@@ -987,7 +987,7 @@ int generateKey(SinglePrivateKey* key, char const* algorithm)
                 ret = wc_dilithium_make_key(&key->key.dilithium, &rng);
         }
 #ifdef WOLFSSL_DILITHIUM_FIPS204_DRAFT
-        else if (strncmp(algorithm, "dilithium", 5) == 0)
+        else if (strncmp(algorithm, "dilithium", 9) == 0)
         {
                 /* Initialize the key depending on the requested type */
                 if (strcmp(algorithm, "dilithium2") == 0)
@@ -1008,7 +1008,24 @@ int generateKey(SinglePrivateKey* key, char const* algorithm)
                 ret = wc_dilithium_make_key(&key->key.dilithium, &rng);
         }
 #endif
-        /* Falcon not yet supported */
+        else if (strncmp(algorithm, "falcon", 6) == 0)
+        {
+                /* Initialize the key depending on the requested type */
+                if (strcmp(algorithm, "falcon512") == 0)
+                        ret = initPrivateKey(key, FALCON_LEVEL1k);
+                else if (strcmp(algorithm, "falcon1024") == 0)
+                        ret = initPrivateKey(key, FALCON_LEVEL5k);
+                else
+                        ERROR_OUT(KRITIS3M_PKI_KEY_UNSUPPORTED,
+                                  "Unsupported Falcon key level: %s",
+                                  algorithm);
+
+                if (ret != 0)
+                        ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "ML-DSA key initialization failed");
+
+                /* Generate the actual key pair */
+                ret = wc_falcon_make_key(&key->key.falcon, &rng);
+        }
         else if (strcmp(algorithm, "ed25519") == 0)
         {
                 /* Initialize the key */
