@@ -314,31 +314,37 @@ int main(int argc, char** argv)
                 /* Write the key to file if requested */
                 if ((paths.entityAltKeyOutputPath != NULL) || (paths.entityKeyOutputPath != NULL))
                 {
-                        char const* destination = paths.entityAltKeyOutputPath;
-                        bool appendAltKey = false;
-                        if (destination == NULL)
-                        {
-                                destination = paths.entityKeyOutputPath;
-                                appendAltKey = true;
-                        }
-
-                        LOG_INFO("Writing key to \"%s\"", destination);
-
                         /* Allocate memory */
                         bytesInBuffer = outputBufferSize;
                         buffer = (uint8_t*) malloc(outputBufferSize);
                         if (buffer == NULL)
                                 ERROR_OUT("unable to allocate output buffer");
 
+                        /* Export PEM key */
                         ret = privateKey_writeAltKeyToBuffer(entityKey, buffer, &bytesInBuffer);
                         if (ret != KRITIS3M_PKI_SUCCESS)
                                 ERROR_OUT("unable to write alt key to buffer: %s (%d)",
                                           kritis3m_pki_error_message(ret),
                                           ret);
 
-                        ret = write_file(destination, buffer, bytesInBuffer, appendAltKey);
-                        if (ret < 0)
-                                ERROR_OUT("unable to write alt key to \"%s\"", destination);
+                        if (paths.entityAltKeyOutputPath != NULL)
+                        {
+                                LOG_INFO("Writing alt key to \"%s\"", paths.entityAltKeyOutputPath);
+
+                                ret = write_file(paths.entityAltKeyOutputPath, buffer, bytesInBuffer, false);
+                                if (ret < 0)
+                                        ERROR_OUT("unable to write alt key to \"%s\"",
+                                                  paths.entityAltKeyOutputPath);
+                        }
+                        if (paths.entityKeyOutputPath != NULL)
+                        {
+                                LOG_INFO("Appending alt key to \"%s\"", paths.entityKeyOutputPath);
+
+                                ret = write_file(paths.entityKeyOutputPath, buffer, bytesInBuffer, true);
+                                if (ret < 0)
+                                        ERROR_OUT("unable to write alt key to \"%s\"",
+                                                  paths.entityKeyOutputPath);
+                        }
 
                         RESET_BUFFER();
                 }
