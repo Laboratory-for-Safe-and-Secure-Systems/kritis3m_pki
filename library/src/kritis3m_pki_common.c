@@ -1008,6 +1008,7 @@ int generateKey(SinglePrivateKey* key, char const* algorithm)
                 ret = wc_dilithium_make_key(&key->key.dilithium, &rng);
         }
 #endif
+#ifdef HAVE_FALCON
         else if (strncmp(algorithm, "falcon", 6) == 0)
         {
                 /* Initialize the key depending on the requested type */
@@ -1026,6 +1027,7 @@ int generateKey(SinglePrivateKey* key, char const* algorithm)
                 /* Generate the actual key pair */
                 ret = wc_falcon_make_key(&key->key.falcon, &rng);
         }
+#endif
         else if (strcmp(algorithm, "ed25519") == 0)
         {
                 /* Initialize the key */
