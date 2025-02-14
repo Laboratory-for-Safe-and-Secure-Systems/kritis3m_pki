@@ -19,7 +19,7 @@
 #                                   secp256, secp384, secp521
 #                                   ed25519, ed448
 #                                   mldsa44, mldsa65, mldsa87
-#                                   dilithium2, dilithium3, dilithium5
+#                                   falcon512, falcon1024
 #   --gen_key <alogrithm>       Algorithm for key generation (see list above)
 #   --gen_alt_key <alogrithm>   Algorithm for alternative key generation (see list above)
 #
@@ -89,7 +89,7 @@ _kritis3m_pki_completions() {
         return 0
         ;;
     --gen_key | --gen_alt_key)
-        algos="rsa2048 rsa3072 rsa4096 secp256 secp384 secp521 ed22519 ed448 mldsa44 mldsa65 mldsa87 dilithium2 dilithium3 dilithium5 falcon512 falcon1024"
+        algos="rsa2048 rsa3072 rsa4096 secp256 secp384 secp521 ed22519 ed448 mldsa44 mldsa65 mldsa87 falcon512 falcon1024"
         COMPREPLY=($(compgen -W "${algos}" -- ${cur}))
         return 0
         ;;
