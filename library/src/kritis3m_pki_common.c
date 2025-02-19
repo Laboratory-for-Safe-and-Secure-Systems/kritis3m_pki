@@ -363,15 +363,15 @@ int initPrivateKey(SinglePrivateKey* key, int type)
                 switch (type)
                 {
                 case ML_DSA_LEVEL2k:
-                        key->certKeyType = DILITHIUM_LEVEL2_TYPE;
+                        key->certKeyType = ML_DSA_LEVEL2_TYPE;
                         ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_44);
                         break;
                 case ML_DSA_LEVEL3k:
-                        key->certKeyType = DILITHIUM_LEVEL3_TYPE;
+                        key->certKeyType = ML_DSA_LEVEL3_TYPE;
                         ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_65);
                         break;
                 case ML_DSA_LEVEL5k:
-                        key->certKeyType = DILITHIUM_LEVEL5_TYPE;
+                        key->certKeyType = ML_DSA_LEVEL5_TYPE;
                         ret = wc_dilithium_set_level(&key->key.dilithium, WC_ML_DSA_87);
                         break;
 #if defined(WOLFSSL_DILITHIUM_FIPS204_DRAFT)
