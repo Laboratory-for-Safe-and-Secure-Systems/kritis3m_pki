@@ -86,7 +86,7 @@ target_include_directories(kritis3m_pki_common PUBLIC
 target_include_directories(kritis3m_pki_common PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/priv_include
 )
-target_link_libraries(kritis3m_pki_common PUBLIC wolfssl)
+target_link_libraries(kritis3m_pki_common PUBLIC wolfssl::wolfssl)
 target_compile_definitions(kritis3m_pki_common PRIVATE "BUILDING_KRITIS3M_PKI")
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(kritis3m_pki_common PUBLIC "BUILDING_KRITIS3M_PKI_SHARED")
