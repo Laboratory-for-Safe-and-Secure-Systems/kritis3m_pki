@@ -45,6 +45,8 @@ static const struct option cli_options[] = {
         {"intermediate_cert_label", required_argument, 0, 0x0B},
         {"root_cert", required_argument, 0, 0x0C},
         {"root_cert_label", required_argument, 0, 0x0D},
+        {"pre_shared_key", required_argument, 0, 0x0E},
+        {"pre_shared_key_label", required_argument, 0, 0x0F},
         {"verbose", no_argument, 0, 'v'},
         {"debug", no_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
@@ -61,12 +63,16 @@ void print_help(char* prog_name)
         printf("  --intermediate_cert <file>        Path to the intermediate cert (PEM)\r\n");
         printf("  --root_cert <file>                Path to the root cert (PEM)\r\n");
 
+        printf("\nPre-shared key:\r\n");
+        printf("  --pre_shared_key key              Pre-shared key to use (Base64 encoded)\r\n");
+
         printf("\nPKCS#11 labels:\r\n");
         printf("  --key_label <label>               Label of the primary key\r\n");
         printf("  --alt_key_label <label>           Label of the alternative key\r\n");
         printf("  --entity_cert_label <file>        Label of the entity certificate\r\n");
         printf("  --intermediate_cert_label <file>  Label of the intermediate certificate\r\n");
         printf("  --root_cert_label <file>          Label of the intermediate certificate\r\n");
+        printf("  --pre_shared_key_label <label>    Label of the pre-shared key\r\n");
 
         printf("\nPKCS#11 token:\r\n");
         printf("  --module_path <file>              Path to the PKCS#11 module library\r\n");
@@ -114,12 +120,15 @@ int main(int argc, char** argv)
         char const* intermediateCertPath = NULL;
         char const* rootCertPath = NULL;
 
+        char const* preSharedKey = NULL;
+
         /* PKCS#11 labels */
         char const* keyLabel = NULL;
         char const* altKeyLabel = NULL;
         char const* entityCertLabel = NULL;
         char const* intermediateCertLabel = NULL;
         char const* rootCertLabel = NULL;
+        char const* preSharedKeyLabel = NULL;
 
         /* PKCS#11 */
         char const* modulePath = NULL;
@@ -189,6 +198,12 @@ int main(int argc, char** argv)
                         break;
                 case 0x0D: /* root_cert_label */
                         rootCertLabel = optarg;
+                        break;
+                case 0x0E: /* pre_shared_key */
+                        preSharedKey = optarg;
+                        break;
+                case 0x0F: /* pre_shared_key_label */
+                        preSharedKeyLabel = optarg;
                         break;
                 case 'v':
                         LOG_LVL_SET(LOG_LVL_INFO);
@@ -421,6 +436,24 @@ int main(int argc, char** argv)
                  (rootCertPath == NULL && rootCertLabel != NULL))
         {
                 ERROR_OUT("Both a PKCS#11 root certificate label and a file path are required");
+        }
+
+        if (preSharedKey != NULL && preSharedKeyLabel != NULL)
+        {
+                LOG_INFO("Importing pre-shared key with label \"%s\"", preSharedKeyLabel);
+
+                ret = kritis3m_pki_entity_token_import_psk(preSharedKey, preSharedKeyLabel);
+                if (ret != KRITIS3M_PKI_SUCCESS)
+                        ERROR_OUT("unable to import pre-shared key: %s (%d)",
+                                  kritis3m_pki_error_message(ret),
+                                  ret);
+
+                LOG_INFO("Pre-shared key successfully imported");
+        }
+        else if ((preSharedKey != NULL && preSharedKeyLabel == NULL) ||
+                 (preSharedKey == NULL && preSharedKeyLabel != NULL))
+        {
+                ERROR_OUT("Both a PKCS#11 pre-shared key label and a key are required");
         }
 
 exit:

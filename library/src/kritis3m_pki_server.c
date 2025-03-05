@@ -97,7 +97,7 @@ int outputCert_initFromCsr(OutputCert* outputCert, uint8_t const* buffer, size_t
         /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer object. */
         ret = wc_PemToDer(buffer, buffer_size, CERTREQ_TYPE, &der, NULL, NULL, NULL);
         if (ret != 0)
-                ERROR_OUT(KRITIS3M_PKI_PEM_DECODE_ERROR, "Failed to convert PEM to DER: %d", ret);
+                ERROR_OUT(KRITIS3M_PKI_DECODE_ERROR, "Failed to convert PEM to DER: %d", ret);
 
         /* Decode the parsed CSR to access its internal fields for the final certificate */
         wc_InitDecodedCert(&decodedCsr, der->buffer, der->length, NULL);
@@ -725,7 +725,7 @@ int outputCert_finalize(OutputCert* outputCert, PrivateKey* issuerKey, uint8_t* 
         if (ret > 0)
                 *buffer_size = ret;
         else
-                ERROR_OUT(KRITIS3M_PKI_PEM_ENCODE_ERROR, "Failed to convert DER to PEM: %d", ret);
+                ERROR_OUT(KRITIS3M_PKI_ENCODE_ERROR, "Failed to convert DER to PEM: %d", ret);
 
         ret = KRITIS3M_PKI_SUCCESS;
 

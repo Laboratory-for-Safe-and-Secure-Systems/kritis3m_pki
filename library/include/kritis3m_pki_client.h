@@ -51,6 +51,12 @@ KRITIS3M_PKI_API int kritis3m_pki_entity_token_import_key(PrivateKey* key);
  */
 KRITIS3M_PKI_API int kritis3m_pki_entity_token_import_cert(InputCert* cert, char const* label);
 
+/* Import a Base64 encoded symmetric pre-shared key into an external reference.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+KRITIS3M_PKI_API int kritis3m_pki_entity_token_import_psk(char const* psk, char const* label);
+
 /* Close the PKCS#11 token for the entity key. */
 KRITIS3M_PKI_API int kritis3m_pki_close_entity_token(void);
 

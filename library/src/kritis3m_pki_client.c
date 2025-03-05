@@ -1,6 +1,9 @@
 #include "kritis3m_pki_client.h"
 #include "kritis3m_pki_priv.h"
 
+#include "wolfssl/wolfcrypt/coding.h"
+#include "wolfssl/wolfcrypt/hmac.h"
+
 #if defined(_WIN32)
 #include <winsock2.h>
 #else
@@ -178,6 +181,50 @@ KRITIS3M_PKI_API int kritis3m_pki_entity_token_import_cert(InputCert* cert, char
                 ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "Failed to import cert: %d", ret);
 
 cleanup:
+        return ret;
+#else
+        pki_log(KRITIS3M_PKI_LOG_LEVEL_ERR, "PKCS#11 support not compiled in");
+        return KRITIS3M_PKI_PKCS11_ERROR;
+#endif
+}
+
+/* Import a Base64 encoded symmetric pre-shared key into an external reference.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+int kritis3m_pki_entity_token_import_psk(char const* psk, char const* label)
+{
+#ifdef HAVE_PKCS11
+        int ret = KRITIS3M_PKI_SUCCESS;
+        byte pskBin[128];
+        word32 pskBinLen = sizeof(pskBin);
+
+        if ((psk == NULL) || (label == NULL))
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        if (entityTokenInitialized == false)
+                ERROR_OUT(KRITIS3M_PKI_LOG_LEVEL_ERR, "PKCS#11 token not initialized");
+
+        /* Base64 decode the given PSK */
+        ret = Base64_Decode(psk, (word32) strlen(psk), pskBin, &pskBinLen);
+        if (ret != 0)
+                ERROR_OUT(KRITIS3M_PKI_DECODE_ERROR, "Failed to decode PSK: %d", ret);
+
+        Hkdf hkdf;
+        ret = wc_HkdfInit_Label(&hkdf, SHA256, label, NULL, PKCS11_ENTITY_TOKEN_DEVICE_ID);
+        if (ret != 0)
+                ERROR_OUT(KRITIS3M_PKI_KEY_ERROR, "Failed to initialize HKDF: %d", ret);
+
+        hkdf.key = pskBin;
+        hkdf.keyLen = pskBinLen;
+
+        /* Import the decoded key */
+        ret = wc_Pkcs11StoreKey_ex(&entityToken, PKCS11_KEY_TYPE_HKDF, 0, &hkdf, 1);
+        if (ret != 0)
+                ERROR_OUT(KRITIS3M_PKI_PKCS11_ERROR, "Failed to import cert: %d", ret);
+
+cleanup:
+        wc_HkdfFree(&hkdf);
         return ret;
 #else
         pki_log(KRITIS3M_PKI_LOG_LEVEL_ERR, "PKCS#11 support not compiled in");
@@ -687,7 +734,7 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
         if (ret > 0)
                 *buffer_size = ret;
         else
-                ERROR_OUT(KRITIS3M_PKI_PEM_ENCODE_ERROR, "Failed to convert CSR to PEM: %d", ret);
+                ERROR_OUT(KRITIS3M_PKI_ENCODE_ERROR, "Failed to convert CSR to PEM: %d", ret);
 
         ret = KRITIS3M_PKI_SUCCESS;
 

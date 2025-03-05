@@ -14,10 +14,10 @@ char const* kritis3m_pki_error_message(int error_code)
                 return "Memory allocation error";
         case KRITIS3M_PKI_ARGUMENT_ERROR:
                 return "Invalid argument";
-        case KRITIS3M_PKI_PEM_DECODE_ERROR:
-                return "PEM decode error";
-        case KRITIS3M_PKI_PEM_ENCODE_ERROR:
-                return "PEM encode error";
+        case KRITIS3M_PKI_DECODE_ERROR:
+                return "Decode error";
+        case KRITIS3M_PKI_ENCODE_ERROR:
+                return "Encode error";
         case KRITIS3M_PKI_KEY_ERROR:
                 return "Key error";
         case KRITIS3M_PKI_KEY_UNSUPPORTED:
@@ -778,7 +778,7 @@ static int parsePemBuffer(uint8_t const* buffer,
         /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer object. */
         ret = wc_PemToDer(buffer, buffer_size, PRIVATEKEY_TYPE, &der, NULL, info, &key_type);
         if (ret != 0)
-                ERROR_OUT(KRITIS3M_PKI_PEM_DECODE_ERROR, "PEM to DER conversion failed: %d", ret);
+                ERROR_OUT(KRITIS3M_PKI_DECODE_ERROR, "PEM to DER conversion failed: %d", ret);
 
         if (key_type == 0)
         {
@@ -1194,7 +1194,7 @@ int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size
         if (ret > 0)
                 *buffer_size = ret;
         else
-                ERROR_OUT(KRITIS3M_PKI_PEM_ENCODE_ERROR, "DER to PEM conversion failed: %d", ret);
+                ERROR_OUT(KRITIS3M_PKI_ENCODE_ERROR, "DER to PEM conversion failed: %d", ret);
 
         ret = KRITIS3M_PKI_SUCCESS;
 
@@ -1504,7 +1504,7 @@ int inputCert_initFromBuffer(InputCert* cert, uint8_t const* buffer, size_t buff
         /* Convert PEM to DER. The result is stored in the newly allocated DerBuffer object */
         ret = wc_PemToDer(buffer, buffer_size, CERT_TYPE, &der, NULL, &info, NULL);
         if (ret != 0)
-                ERROR_OUT(KRITIS3M_PKI_PEM_DECODE_ERROR, "Failed to convert PEM to DER: %d", ret);
+                ERROR_OUT(KRITIS3M_PKI_DECODE_ERROR, "Failed to convert PEM to DER: %d", ret);
 
         /* Allocate buffer for the DER certificate */
         cert->buffer = (uint8_t*) malloc(der->length);
