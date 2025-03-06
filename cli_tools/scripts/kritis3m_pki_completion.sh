@@ -132,8 +132,8 @@ _kritis3m_se_importer_completions() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD - 1]}"
 
-    opts="--key --alt_key --entity_cert --intermediate_cert --root_cert \
-          --key_label --alt_key_label --entity_cert_label --intermediate_cert_label --root_cert_label \
+    opts="--key --alt_key --entity_cert --intermediate_cert --root_cert --pre_shared_key \
+          --key_label --alt_key_label --entity_cert_label --intermediate_cert_label --root_cert_label --pre_shared_key_label \
           --module_path --slot --pin \
           --verbose --debug --help"
 
@@ -142,7 +142,8 @@ _kritis3m_se_importer_completions() {
         _filedir
         return 0
         ;;
-    --slot | --pin | --key_label | --alt_key_label | --entity_cert_label | --intermediate_cert_label | --root_cert_label)
+    --slot | --pin | --key_label | --alt_key_label | --entity_cert_label | --intermediate_cert_label | --root_cert_label | \
+        --pre_shared_key_label | --pre_shared_key)
         # No file completion needed for these options, just suggest an empty list
         COMPREPLY=()
         return 0
