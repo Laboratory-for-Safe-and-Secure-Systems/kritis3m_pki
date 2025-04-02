@@ -80,9 +80,22 @@ KRITIS3M_PKI_API int signingRequest_init(SigningRequest* request,
 KRITIS3M_PKI_API int signingRequest_finalize(SigningRequest* request,
                                              PrivateKey* key,
                                              uint8_t* buffer,
-                                             size_t* buffer_size);
+                                             size_t* buffer_size,
+                                             bool remove_pem_header);
 
 /* Free the memory of given SigningRequest */
 KRITIS3M_PKI_API void signingRequest_free(SigningRequest* request);
+
+enum ResponseType
+{
+        RESPONSE_TYPE_CERT,
+        RESPONSE_TYPE_CHAIN,
+};
+
+KRITIS3M_PKI_API int parseESTResponse(uint8_t* buffer,
+                                      size_t buffer_size,
+                                      uint8_t** out_buf,
+                                      int* out_buf_size,
+                                      enum ResponseType response_type);
 
 #endif /* KRITIS3M_PKI_CLIENT_H */
