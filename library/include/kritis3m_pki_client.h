@@ -86,12 +86,6 @@ KRITIS3M_PKI_API int signingRequest_finalize(SigningRequest* request,
 /* Free the memory of given SigningRequest */
 KRITIS3M_PKI_API void signingRequest_free(SigningRequest* request);
 
-enum ResponseType
-{
-        RESPONSE_TYPE_CERT,
-        RESPONSE_TYPE_CHAIN,
-};
-
 // see https://github.com/wolfSSL/wolfssl-examples/blob/master/pkcs7/signedData-p7b.c for reference
 // @info out_buf_size does not reflect the size of the allocated buffer. To avaoid multiple allocations, @param out_buf allocates MAX_DECODE_SIZE bytes.
 KRITIS3M_PKI_API int
