@@ -812,10 +812,8 @@ void signingRequest_free(SigningRequest* request)
         }
 }
 
-KRITIS3M_PKI_API int parseESTResponse(uint8_t* buffer,
-                                      size_t buffer_size,
-                                      uint8_t** out_buf,
-                                      int* out_buf_size)
+KRITIS3M_PKI_API int
+        parseESTResponse(uint8_t* buffer, size_t buffer_size, uint8_t** out_buf, int* out_buf_size)
 {
 
         int ret = 0;
@@ -879,6 +877,7 @@ KRITIS3M_PKI_API int parseESTResponse(uint8_t* buffer,
         {
                 ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Unable to allocate buffer for response decoding");
         }
+
         memset(*out_buf, 0, MAX_DECODE_SIZE);
 
         uint8_t pemBuffer[MAX_DECODE_SIZE];
