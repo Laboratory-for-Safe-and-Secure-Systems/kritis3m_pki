@@ -815,8 +815,7 @@ void signingRequest_free(SigningRequest* request)
 KRITIS3M_PKI_API int parseESTResponse(uint8_t* buffer,
                                       size_t buffer_size,
                                       uint8_t** out_buf,
-                                      int* out_buf_size,
-                                      enum ResponseType response_type)
+                                      int* out_buf_size)
 {
 
         int ret = 0;
@@ -874,37 +873,55 @@ KRITIS3M_PKI_API int parseESTResponse(uint8_t* buffer,
                           ret,
                           errMsg);
         }
-
-        /* Based on the request, we have to copy the decoded certificates to their destination */
-        if (response_type == RESPONSE_TYPE_CERT)
+        // outbuffer:
+        *out_buf = (uint8_t*) malloc(MAX_DECODE_SIZE);
+        if (*out_buf == NULL)
         {
-
-                int t_out_buf_size = pkcs7->singleCertSz;
-                *out_buf = (uint8_t*) malloc(t_out_buf_size);
-                if (*out_buf == NULL)
-                {
-                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR,
-                                  "Unable to allocate buffer for response decoding");
-                }
-                memset(*out_buf, 0, t_out_buf_size);
-                XMEMCPY(*out_buf, pkcs7->singleCert, pkcs7->singleCertSz);
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Unable to allocate buffer for response decoding");
         }
-        else if (response_type == RESPONSE_TYPE_CHAIN)
+        memset(*out_buf, 0, MAX_DECODE_SIZE);
+
+        uint8_t pemBuffer[MAX_DECODE_SIZE];
+        for (int i = 0; i < MAX_PKCS7_CERTS; i++)
         {
-                // concat and write to intermediate and root certificate
-                int t_out_buf_size = pkcs7->certSz[1] + pkcs7->certSz[0];
-                *out_buf = (uint8_t*) malloc(t_out_buf_size);
-                if (*out_buf == NULL)
+                memset(pemBuffer, 0, MAX_DECODE_SIZE);
+                if (pkcs7->certSz[i] == 0)
                 {
-                        ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR,
-                                  "Unable to allocate buffer for response decoding");
+                        /* reached end of valid certs in array */
+                        break;
                 }
-                memset(*out_buf, 0, t_out_buf_size);
-                // intermediate
-                XMEMCPY(*out_buf, pkcs7->cert[1], pkcs7->certSz[1]);
-                // root
-                XMEMCPY(*out_buf + pkcs7->certSz[1], pkcs7->cert[0], pkcs7->certSz[0]);
-                *out_buf_size = t_out_buf_size;
+                int derSize = pkcs7->certSz[i];
+                uint8_t* derBuffer = pkcs7->cert[i];
+
+                printf("CERT [%d] size = %d bytes\n", i, derSize);
+
+                memset(pemBuffer, 0, MAX_DECODE_SIZE);
+                int pemSize = MAX_DECODE_SIZE;
+
+                /* convert DER to PEM */
+                pemSize = wc_DerToPem(derBuffer, derSize, pemBuffer, pemSize, CERT_TYPE);
+                if (pemSize < 0)
+                {
+                        char errMsg[128];
+                        wolfSSL_ERR_error_string_n(pemSize, errMsg, sizeof(errMsg));
+                        ERROR_OUT(KRITIS3M_PKI_ENCODE_ERROR,
+                                  "ERROR converting der to pem, ret = %d, msg: %s",
+                                  pemSize,
+                                  errMsg);
+                }
+                printf("converted DER to PEM, pemSz = %d\n", pemSize);
+                printf("CERT [%d] PEM:\n", i);
+
+                /* print PEM to terminal, only if able to NULL terminate */
+                if (pemSize < MAX_DECODE_SIZE - 1)
+                {
+                        // copy pembuffer to out_buf
+                        XMEMCPY(*out_buf + *out_buf_size, pemBuffer, pemSize);
+                        *out_buf_size = *out_buf_size + pemSize;
+
+                        pemBuffer[pemSize] = 0;
+                        pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "%s\n", pemBuffer);
+                }
         }
 
         // free pkcs7 object

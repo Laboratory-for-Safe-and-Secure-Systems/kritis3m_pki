@@ -12,7 +12,7 @@ static kritis3m_pki_log_callback pki_log_callback = NULL;
 static bool pki_log_enabled = false;
 
 /* Internal method declarations */
-void wolfssl_logging_callback(int level, const char* str);
+static void wolfssl_logging_callback(int level, const char* str);
 void kritis3m_pki_default_log_callback(int32_t level, char const* message);
 
 int kritis3m_pki_prepare_logging(kritis3m_pki_configuration const* config)
@@ -60,7 +60,7 @@ void pki_log(int32_t level, char const* message, ...)
                 pki_log_callback(level, buffer);
 }
 
-void wolfssl_logging_callback(int level, const char* str)
+static void wolfssl_logging_callback(int level, const char* str)
 {
         (void) level;
 
