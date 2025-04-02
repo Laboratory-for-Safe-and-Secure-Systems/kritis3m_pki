@@ -1,8 +1,9 @@
 #include "kritis3m_pki_client.h"
 #include "kritis3m_pki_priv.h"
-
 #include "wolfssl/wolfcrypt/coding.h"
 #include "wolfssl/wolfcrypt/hmac.h"
+#include "wolfssl/wolfcrypt/pkcs7.h"
+#include <wolfssl/wolfcrypt/asn_public.h>
 
 #if defined(_WIN32)
 #include <winsock2.h>
@@ -16,6 +17,8 @@
 #define SUBJECT_ORG "LaS3"
 #define SUBJECT_UNIT "KRITIS3M"
 #define SUBJECT_EMAIL "las3@oth-regensburg.de"
+#define PEM_TYPE_MAX_LEN 32
+#define MAX_DECODE_SIZE 30000
 
 #ifdef HAVE_PKCS11
 
@@ -622,6 +625,42 @@ cleanup:
 }
 #endif
 
+/* Remove PEM header and footer from a buffer containing PEM data.
+ * The function modifies the buffer in-place and updates the buffer size.
+ *
+ * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
+ */
+static int remove_pem_header_footer(uint8_t* buffer, size_t* buffer_size)
+{
+        if (buffer == NULL || buffer_size == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        /* Find the start of the base64 data (after the header) */
+        uint8_t* start = strstr((char*) buffer, "-----BEGIN CERTIFICATE REQUEST-----\n");
+        if (start == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+        start = strstr((char*) start, "\n");
+        if (start == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+        start++; /* Skip the newline */
+
+        /* Find the end of the base64 data (before the footer) */
+        uint8_t* end = strstr((char*) start, "-----END CERTIFICATE REQUEST-----");
+        if (end == NULL)
+                return KRITIS3M_PKI_ARGUMENT_ERROR;
+
+        /* Calculate the size of the base64 data */
+        size_t base64_size = end - start;
+
+        /* Move the base64 data to the start of the buffer */
+        memmove(buffer, start, base64_size);
+
+        /* Update the buffer size to reflect only the base64 data */
+        *buffer_size = base64_size;
+
+        return KRITIS3M_PKI_SUCCESS;
+}
+
 /* Finalize the SigningRequest using the related private key. Store the final PEM encoded output
  * in the buffer `buffer`. On function entry, `buffer_size` must contain the size of the provided
  * output buffer. After successful completion, `buffer_size` will contain the size of the written
@@ -629,7 +668,11 @@ cleanup:
  *
  * Return value is `KRITIS3M_PKI_SUCCESS` in case of success, negative error code otherwise.
  */
-int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* buffer, size_t* buffer_size)
+int signingRequest_finalize(SigningRequest* request,
+                            PrivateKey* key,
+                            uint8_t* buffer,
+                            size_t* buffer_size,
+                            bool remove_pem_header)
 {
         int ret = KRITIS3M_PKI_SUCCESS;
         WC_RNG rng;
@@ -738,6 +781,13 @@ int signingRequest_finalize(SigningRequest* request, PrivateKey* key, uint8_t* b
 
         ret = KRITIS3M_PKI_SUCCESS;
 
+        if (remove_pem_header)
+        {
+                ret = remove_pem_header_footer(buffer, buffer_size);
+                if (ret < 0)
+                        ERROR_OUT(ret, "Failed to remove PEM header and footer");
+        }
+
 cleanup:
         wc_FreeRng(&rng);
         if (derBuffer != NULL)
@@ -760,4 +810,136 @@ void signingRequest_free(SigningRequest* request)
 
                 free(request);
         }
+}
+
+KRITIS3M_PKI_API int
+        parseESTResponse(uint8_t* buffer, size_t buffer_size, uint8_t** out_buf, int* out_buf_size)
+{
+
+        int ret = 0;
+        int out;
+        const size_t decodedMaxSize = MAX_DECODE_SIZE;
+        word32 decodedSize = decodedMaxSize;
+        PKCS7* pkcs7 = NULL;
+        uint8_t* decodedBuffer = NULL;
+
+        if (buffer == NULL || out_buf == NULL || out_buf_size == NULL || buffer_size == 0)
+                ERROR_OUT(KRITIS3M_PKI_ARGUMENT_ERROR, "Invalid arguments");
+
+        /* The EST response is base64 encoded. Therefore, we have to decode it first. */
+        decodedBuffer = (uint8_t*) malloc(decodedMaxSize);
+
+        if (decodedBuffer == NULL)
+        {
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Unable to allocate buffer for response decoding");
+        }
+        memset(decodedBuffer, 0, decodedMaxSize);
+
+        /* Decode it */
+        ret = Base64_Decode(buffer, buffer_size, decodedBuffer, &decodedSize);
+        if (ret != 0)
+        {
+                char errMsg[128];
+                wolfSSL_ERR_error_string_n(ret, errMsg, sizeof(errMsg));
+                ERROR_OUT(KRITIS3M_PKI_DECODE_ERROR, "Error %d decoding response: %s ", ret, errMsg);
+        }
+
+        // create new pkcs7 object
+        pkcs7 = wc_PKCS7_New(NULL, 0);
+
+        if (pkcs7 == NULL)
+        {
+
+                char errMsg[128];
+                wolfSSL_ERR_error_string_n(ret, errMsg, sizeof(errMsg));
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR,
+                          "Unable to allocate PKCS#7 structure to parse the certificates, msg: %s",
+                          errMsg);
+        }
+
+        // convert decoded PKCS7 response to actual certificates
+
+        /* convert the decoded PKCS#7 response to actual certificates */
+        ret = wc_PKCS7_VerifySignedData(pkcs7, decodedBuffer, decodedSize);
+
+        if (ret != 0)
+        {
+                char errMsg[128];
+                wolfSSL_ERR_error_string_n(ret, errMsg, sizeof(errMsg));
+                ERROR_OUT(KRITIS3M_PKI_DECODE_ERROR,
+                          "Error %d verifying signed data PKCS#7 response: %s ",
+                          ret,
+                          errMsg);
+        }
+        // outbuffer:
+        *out_buf = (uint8_t*) malloc(MAX_DECODE_SIZE);
+        if (*out_buf == NULL)
+        {
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Unable to allocate buffer for response decoding");
+        }
+
+        memset(*out_buf, 0, MAX_DECODE_SIZE);
+
+        uint8_t pemBuffer[MAX_DECODE_SIZE];
+        for (int i = 0; i < MAX_PKCS7_CERTS; i++)
+        {
+                memset(pemBuffer, 0, MAX_DECODE_SIZE);
+                if (pkcs7->certSz[i] == 0)
+                {
+                        /* reached end of valid certs in array */
+                        break;
+                }
+                int derSize = pkcs7->certSz[i];
+                uint8_t* derBuffer = pkcs7->cert[i];
+
+                printf("CERT [%d] size = %d bytes\n", i, derSize);
+
+                memset(pemBuffer, 0, MAX_DECODE_SIZE);
+                int pemSize = MAX_DECODE_SIZE;
+
+                /* convert DER to PEM */
+                pemSize = wc_DerToPem(derBuffer, derSize, pemBuffer, pemSize, CERT_TYPE);
+                if (pemSize < 0)
+                {
+                        char errMsg[128];
+                        wolfSSL_ERR_error_string_n(pemSize, errMsg, sizeof(errMsg));
+                        ERROR_OUT(KRITIS3M_PKI_ENCODE_ERROR,
+                                  "ERROR converting der to pem, ret = %d, msg: %s",
+                                  pemSize,
+                                  errMsg);
+                }
+                printf("converted DER to PEM, pemSz = %d\n", pemSize);
+                printf("CERT [%d] PEM:\n", i);
+
+                /* print PEM to terminal, only if able to NULL terminate */
+                if (pemSize < MAX_DECODE_SIZE - 1)
+                {
+                        // copy pembuffer to out_buf
+                        XMEMCPY(*out_buf + *out_buf_size, pemBuffer, pemSize);
+                        *out_buf_size = *out_buf_size + pemSize;
+
+                        pemBuffer[pemSize] = 0;
+                        pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG, "%s\n", pemBuffer);
+                }
+        }
+
+        // free pkcs7 object
+
+        if (decodedBuffer != NULL)
+                free(decodedBuffer);
+        if (pkcs7 != NULL)
+                wc_PKCS7_Free(pkcs7);
+
+        return ret;
+
+cleanup:
+        if (*out_buf != NULL)
+                free(*out_buf);
+        *out_buf = NULL;
+        if (decodedBuffer != NULL)
+                free(decodedBuffer);
+        if (pkcs7 != NULL)
+                wc_PKCS7_Free(pkcs7);
+        *out_buf_size = 0;
+        return ret;
 }

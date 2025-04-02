@@ -80,9 +80,15 @@ KRITIS3M_PKI_API int signingRequest_init(SigningRequest* request,
 KRITIS3M_PKI_API int signingRequest_finalize(SigningRequest* request,
                                              PrivateKey* key,
                                              uint8_t* buffer,
-                                             size_t* buffer_size);
+                                             size_t* buffer_size,
+                                             bool remove_pem_header);
 
 /* Free the memory of given SigningRequest */
 KRITIS3M_PKI_API void signingRequest_free(SigningRequest* request);
+
+// see https://github.com/wolfSSL/wolfssl-examples/blob/master/pkcs7/signedData-p7b.c for reference
+// @info out_buf_size does not reflect the size of the allocated buffer. To avaoid multiple allocations, @param out_buf allocates MAX_DECODE_SIZE bytes.
+KRITIS3M_PKI_API int
+        parseESTResponse(uint8_t* buffer, size_t buffer_size, uint8_t** out_buf, int* out_buf_size);
 
 #endif /* KRITIS3M_PKI_CLIENT_H */
