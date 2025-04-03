@@ -575,7 +575,7 @@ int main(int argc, char** argv)
                         ERROR_OUT("unable to allocate output buffer");
 
                 /* Finalize the CSR */
-                ret = signingRequest_finalize(request, entityKey, buffer, &bytesInBuffer);
+                ret = signingRequest_finalize(request, entityKey, buffer, &bytesInBuffer, false);
                 if (ret != KRITIS3M_PKI_SUCCESS)
                         ERROR_OUT("unable to finalize CSR: %s (%d)", kritis3m_pki_error_message(ret), ret);
 
