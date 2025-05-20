@@ -892,7 +892,7 @@ KRITIS3M_PKI_API int
                 int derSize = pkcs7->certSz[i];
                 uint8_t* derBuffer = pkcs7->cert[i];
 
-                printf("CERT [%d] size = %d bytes\n", i, derSize);
+                pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG,"CERT [%d] size = %d bytes\n", i, derSize);
 
                 memset(pemBuffer, 0, MAX_DECODE_SIZE);
                 int pemSize = MAX_DECODE_SIZE;
@@ -908,8 +908,9 @@ KRITIS3M_PKI_API int
                                   pemSize,
                                   errMsg);
                 }
-                printf("converted DER to PEM, pemSz = %d\n", pemSize);
-                printf("CERT [%d] PEM:\n", i);
+                pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG,"converted DER to PEM, pemSz = %d\n", pemSize);
+                pki_log(KRITIS3M_PKI_LOG_LEVEL_DBG,"CERT [%d] PEM:\n", i);
+
 
                 /* print PEM to terminal, only if able to NULL terminate */
                 if (pemSize < MAX_DECODE_SIZE - 1)
