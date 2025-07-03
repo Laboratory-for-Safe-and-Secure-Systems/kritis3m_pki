@@ -1475,12 +1475,7 @@ InputCert* inputCert_new(void)
 
         cert->buffer = NULL;
         cert->size = 0;
-        cert->decoded = (DecodedCert*) malloc(sizeof(DecodedCert));
-        if (cert->decoded == NULL)
-        {
-                free(cert);
-                return NULL;
-        }
+        cert->decoded = NULL;
 
         return cert;
 }
@@ -1517,8 +1512,13 @@ int inputCert_initFromBuffer(InputCert* cert, uint8_t const* buffer, size_t buff
         /* Free the DER structure as it is not needed anymore */
         wc_FreeDer(&der);
 
-        /* Decode the cert */
+        /* Initialize the decoded certificate */
+        cert->decoded = (DecodedCert*) malloc(sizeof(DecodedCert));
+        if (cert->decoded == NULL)
+                ERROR_OUT(KRITIS3M_PKI_MEMORY_ERROR, "Failed to allocate memory for decoded cert");
         wc_InitDecodedCert(cert->decoded, cert->buffer, cert->size, NULL);
+
+        /* Decode the cert */
         ret = wc_ParseCert(cert->decoded, CERT_TYPE, NO_VERIFY, NULL);
         if (ret != 0)
                 ERROR_OUT(KRITIS3M_PKI_CSR_ERROR, "Failed to parse input certificate: %d", ret);

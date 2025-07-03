@@ -400,7 +400,7 @@ int main(int argc, char** argv)
                           "required");
         }
 
-        if (rootCertPath != NULL && rootCertLabel != NULL)
+        if (rootCertPath != NULL)
         {
                 cert = inputCert_new();
                 if (cert == NULL)
@@ -419,7 +419,10 @@ int main(int argc, char** argv)
                                   kritis3m_pki_error_message(ret),
                                   ret);
 
-                LOG_INFO("Importing root cert with label \"%s\"", rootCertLabel);
+                if (rootCertLabel != NULL)
+                        LOG_INFO("Importing root cert with label \"%s\"", rootCertLabel);
+                else
+                        LOG_INFO("Importing root cert without label");
 
                 ret = kritis3m_pki_entity_token_import_cert(cert, rootCertLabel);
                 if (ret != KRITIS3M_PKI_SUCCESS)
@@ -432,10 +435,9 @@ int main(int argc, char** argv)
                 RESET_INPUT_CERT();
                 RESET_BUFFER();
         }
-        else if ((rootCertPath != NULL && rootCertLabel == NULL) ||
-                 (rootCertPath == NULL && rootCertLabel != NULL))
+        else if (rootCertPath == NULL && rootCertLabel != NULL)
         {
-                ERROR_OUT("Both a PKCS#11 root certificate label and a file path are required");
+                ERROR_OUT("No root certificate file path provided, but a PKCS#11 label is given");
         }
 
         if (preSharedKey != NULL && preSharedKeyLabel != NULL)
