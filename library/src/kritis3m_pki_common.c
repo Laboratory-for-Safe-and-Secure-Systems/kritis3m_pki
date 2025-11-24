@@ -1190,7 +1190,14 @@ int exportPrivateKey(SinglePrivateKey* key, uint8_t* buffer, size_t* buffer_size
         derSize = ret;
 
         /* Convert DER to PEM */
-        ret = wc_DerToPem(derBuffer, ret, buffer, *buffer_size, PKCS8_PRIVATEKEY_TYPE);
+        if (key->type == RSAk)
+        {
+                ret = wc_DerToPem(derBuffer, ret, buffer, *buffer_size, PRIVATEKEY_TYPE);
+        }
+        else
+        {
+                ret = wc_DerToPem(derBuffer, ret, buffer, *buffer_size, PKCS8_PRIVATEKEY_TYPE);
+        }
         if (ret > 0)
                 *buffer_size = ret;
         else
